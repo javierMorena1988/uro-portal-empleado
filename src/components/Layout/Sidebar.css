@@ -1,0 +1,270 @@
+:root {
+  --primary-color: #004186;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  background: white;
+  color: #333;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Mobile: sidebar opens below header */
+@media (max-width: 1023px) {
+  .sidebar {
+    top: 80px; /* Height of header */
+    height: calc(100vh - 80px);
+  }
+}
+
+.sidebar-open {
+  transform: translateX(0);
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+/* Mobile: overlay starts below header */
+@media (max-width: 1023px) {
+  .sidebar-overlay {
+    top: 80px; /* Height of header */
+    height: calc(100vh - 80px);
+  }
+}
+
+.sidebar-header {
+  padding: 2rem 1.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+
+
+.user-info {
+  padding: 1rem 0rem;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.user-name {
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding-top: 1rem;
+}
+
+/* Mobile sidebar header */
+.sidebar-header-mobile {
+  display: none;
+}
+
+.close-btn-mobile {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.user-icon-mobile {
+  background-color: var(--primary-color);
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin-right: 1rem;
+}
+
+.user-name-mobile {
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  text-align: left;
+  flex: 1;
+}
+
+/* Mobile: add horizontal padding to navigation */
+@media (max-width: 1023px) {
+  .sidebar-header-mobile {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 1.5rem 1rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .sidebar-header {
+    display: none;
+  }
+  
+  .user-info {
+    display: none;
+  }
+  
+  .sidebar-nav {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+.nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-item {
+  margin: 0.25rem 0;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.2s;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.nav-link:hover {
+  background-color: #f3f4f6;
+}
+
+.nav-link.active {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: var(--radius);
+}
+
+.nav-icon {
+  font-size: 1.25rem;
+  width: 24px;
+  text-align: center;
+}
+
+.nav-label {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.sidebar-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.logout-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.logout-icon {
+  font-size: 1rem;
+}
+
+.logout-text {
+  font-weight: 500;
+}
+
+/* Desktop styles */
+@media (min-width: 1024px) {
+  .sidebar {
+    position: static;
+    transform: translateX(0);
+    width: 280px;
+    height: 100vh;
+    padding: 1rem;
+  }
+  
+  .sidebar-overlay {
+    display: none;
+  }
+  
+  .close-btn {
+    display: none;
+  }
+}
