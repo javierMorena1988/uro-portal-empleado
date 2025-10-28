@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../../hooks';
 import './Header.css';
 
 interface HeaderProps {
@@ -7,6 +8,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuToggle, isSidebarOpen }) => {
+  const { logout } = useAuth();
   return (
     <header className="header">
       <div className="header-left">
@@ -35,7 +37,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, isSidebarOpen }) => {
       </div>
       
       <div className="header-right">
-        <button className="logout-header-btn" aria-label="Cerrar sesión">
+        <button className="logout-header-btn" onClick={logout} aria-label="Cerrar sesión">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
             <polyline points="16,17 21,12 16,7"/>

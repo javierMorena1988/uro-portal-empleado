@@ -51,6 +51,7 @@
 /* Quick Access Section */
 .quick-access-section {
   margin-bottom: 2rem;
+  width: 100%;
 }
 
 h2 {
@@ -320,10 +321,11 @@ h2 {
   background-color: #1a365d;
 }
 
-/* Mobile styles */
-@media (max-width: 768px) {
+/* Mobile and Tablet styles - Full width cards */
+@media (max-width: 1023px) {
   .dashboard {
-    padding: 0 0.5rem;
+    padding: 0;
+    width: 100%;
   }
   
   .user-avatar {
@@ -335,9 +337,12 @@ h2 {
   .quick-access-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
+    width: 100%;
   }
   
   .quick-access-card {
+    width: 100%;
+    margin: 0;
     padding: 1rem;
   }
   
@@ -356,16 +361,11 @@ h2 {
   }
 }
 
-/* Tablet styles */
-@media (min-width: 769px) and (max-width: 1023px) {
-  .quick-access-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
-/* Desktop styles - 1 column */
+/* Desktop styles - 3 columns */
 @media (min-width: 1024px) {
   .quick-access-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
   }
 }

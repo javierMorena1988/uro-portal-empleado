@@ -1,3 +1,8 @@
+:root {
+  --primary-color: #004186;
+  --header-height: 64px;
+}
+
 .header {
   background: white;
   border-bottom: 1px solid #e5e7eb;
@@ -8,6 +13,8 @@
   top: 0;
   z-index: 1001;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  height: var(--header-height);
+  min-height: var(--header-height);
 }
 
 .header-left {
@@ -39,6 +46,11 @@
   padding: 0.5rem;
   border-radius: 0.5rem;
   transition: background-color 0.2s;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-toggle:hover {
@@ -75,9 +87,14 @@
 }
 
 .close-icon {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   color: #374151;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 18px;
 }
 
 .header-title h1 {

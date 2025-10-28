@@ -11,24 +11,25 @@
   width: 100%;
 }
 
+/* Desktop styles */
+@media (min-width: 1024px) {
+  .main-content {
+    width: calc(100% - 280px);
+    margin-left: 280px;
+  }
+  
+  .content {
+    width: 100%;
+    max-width: none;
+    min-height: calc(100vh - 64px);
+  }
+}
+
 .content {
   flex: 1;
   padding: 1rem;
   overflow-y: auto;
   background-color: #f8f9fa;
-}
-
-/* Desktop styles */
-@media (min-width: 1024px) {
-  .main-content {
-    width: calc(100% - 280px);
-  }
-  
-  .content {
-    padding: 1rem;
-    width: 100%;
-    max-width: none;
-  }
 }
 
 /* Large desktop with max-width container */

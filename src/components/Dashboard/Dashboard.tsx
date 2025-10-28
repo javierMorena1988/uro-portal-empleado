@@ -1,9 +1,14 @@
 import React from "react";
 import "./Dashboard.css";
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onViewChange: (view: string) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
   const quickAccessItems = [
     {
+      id: "payroll",
       title: "Nóminas",
       description: "Consulta y descarga tus nóminas mensuales",
       icon: (
@@ -24,6 +29,7 @@ const Dashboard: React.FC = () => {
       ),
     },
     {
+      id: "public-docs",
       title: "Documentos públicos",
       description: "Políticas, calendarios y recursos de la empresa",
       icon: (
@@ -40,6 +46,7 @@ const Dashboard: React.FC = () => {
       ),
     },
     {
+      id: "private-docs",
       title: "Documentos privados",
       description: "Contratos, certificados y documentación personal",
       icon: (
@@ -102,7 +109,11 @@ const Dashboard: React.FC = () => {
         <h2>Acceso rápido</h2>
         <div className="quick-access-grid">
           {quickAccessItems.map((item, index) => (
-            <div key={index} className="quick-access-card">
+            <div 
+              key={index} 
+              className="quick-access-card"
+              onClick={() => onViewChange(item.id)}
+            >
               <div className="card-icon">{item.icon}</div>
               <h3 className="card-title">{item.title}</h3>
               <p className="card-description">{item.description}</p>
@@ -139,9 +150,12 @@ const Dashboard: React.FC = () => {
               </div>
             ))}
             <div className="payroll-footer">
-              <a href="#" className="view-all-link">
+              <button 
+                className="view-all-link"
+                onClick={() => onViewChange('payroll')}
+              >
                 Ver todas las nóminas
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -149,8 +163,7 @@ const Dashboard: React.FC = () => {
 
       {/* Help Section */}
       <div className="help-section">
-        <div className="help-card">
-          <div className="help-content">
+        <div className="help-content">
             <div className="help-text">
               <h3>¿Necesitas ayuda?</h3>
               <p>
@@ -160,7 +173,6 @@ const Dashboard: React.FC = () => {
             </div>
             <button className="contact-btn">Contactar RRHH</button>
           </div>
-        </div>
       </div>
     </div>
   );
