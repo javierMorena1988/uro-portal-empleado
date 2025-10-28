@@ -31,7 +31,7 @@
 }
 
 /* Filtros */
-.document-filters {
+.public-document-filters {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 2rem;
@@ -60,7 +60,7 @@
 }
 
 /* Lista de documentos */
-.public-documents-content .documents-list {
+.public-documents-content .public-documents-list {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
@@ -239,7 +239,7 @@
 
 /* Tablet styles */
 @media (min-width: 769px) and (max-width: 1023px) {
-  .public-documents-content .documents-list {
+  .public-documents-content .public-documents-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
@@ -250,7 +250,7 @@
     padding: 1.25rem;
   }
 
-  .documents-list {
+  .public-documents-list {
     grid-template-columns: repeat(2, 1fr);
   }
 
@@ -395,7 +395,7 @@
     font-size: 0.875rem;
   }
 
-  .public-documents-content .documents-list {
+  .public-documents-content .public-documents-list {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
@@ -455,9 +455,35 @@
     align-self: flex-start;
   }
 
-  .public-document-size {
+  .public-document-item-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 0.875rem;
     color: #718096;
+    width: 100%;
+  }
+  
+  .public-document-item-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  
+  .public-document-action-btn {
+    flex: 1;
+    max-width: 120px;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
   }
 
   .public-document-view-btn {

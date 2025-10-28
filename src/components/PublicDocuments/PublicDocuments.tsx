@@ -125,7 +125,7 @@ const PublicDocuments: React.FC = () => {
         </div>
 
         {/* Lista de documentos */}
-        <div className="documents-list">
+        <div className="public-documents-list">
           {filteredDocuments.map((document) => (
             <div key={document.id} className="public-document-item">
               <div className="public-document-item-header">
@@ -155,7 +155,7 @@ const PublicDocuments: React.FC = () => {
               
               <div className="public-document-item-actions">
                 <button 
-                  className="public-document-action-btn document-view-btn"
+                  className="public-document-action-btn public-document-view-btn"
                   onClick={() => handleView(document)}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -166,7 +166,7 @@ const PublicDocuments: React.FC = () => {
                 </button>
                 
                 <button 
-                  className="public-document-action-btn document-download-btn"
+                  className="public-document-action-btn public-document-download-btn"
                   onClick={() => handleDownload(document)}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
