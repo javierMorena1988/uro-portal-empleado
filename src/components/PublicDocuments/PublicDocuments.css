@@ -23,13 +23,6 @@
   line-height: 1.4;
 }
 
-.public-documents-content {
-  background-color: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
 /* Filtros */
 .public-document-filters {
   display: flex;
@@ -40,13 +33,13 @@
 
 .filter-btn {
   padding: 0.5rem 1rem;
-  border-radius: 20px;
+  border-radius: var(--radius);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
-  background-color: #f7fafc;
+  background-color: var(--color-white);
   color: #4a5568;
 }
 
@@ -92,13 +85,17 @@
 .public-document-item-icon {
   width: 48px;
   height: 48px;
-  background-color: #004186;
+  background-color: var(--item-icon-background);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   flex-shrink: 0;
+}
+
+.public-document-item-icon svg {
+  color: var(--primary-color);
 }
 
 .public-document-item-content {
@@ -170,7 +167,7 @@
 }
 
 .public-document-view-btn {
-  background-color: white;
+  background-color: var(--background);
   color: #4a5568;
   border: 1px solid #e2e8f0;
 }
@@ -271,7 +268,6 @@
   .public-document-item-icon {
     width: 56px;
     height: 56px;
-    background-color: #004186;
     color: white;
     flex-shrink: 0;
   }
@@ -421,7 +417,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #004186;
     border-radius: 8px;
     color: white;
     flex-shrink: 0;

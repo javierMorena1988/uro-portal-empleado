@@ -29,7 +29,7 @@
   flex: 1;
   padding: 1rem;
   overflow-y: auto;
-  background-color: #f8f9fa;
+  background-color: var(--background);
 }
 
 /* Large desktop with max-width container */

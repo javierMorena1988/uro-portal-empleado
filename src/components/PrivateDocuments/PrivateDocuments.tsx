@@ -1,4 +1,5 @@
 import React from "react";
+import { DOCUMENT_MESSAGES } from "../../constants";
 import "./PrivateDocuments.css";
 
 interface PrivateDocument {
@@ -215,10 +216,9 @@ const PrivateDocuments: React.FC = () => {
             </svg>
           </div>
           <div className="protected-content">
-            <h3 className="protected-title">Documentos protegidos</h3>
+            <h3 className="protected-title">{DOCUMENT_MESSAGES.PROTECTED_SECTION_TITLE}</h3>
             <p className="protected-text">
-              Estos documentos son privados y solo tú puedes acceder a ellos. Se
-              almacenan de forma segura.
+              {DOCUMENT_MESSAGES.PROTECTED_SECTION_TEXT}
             </p>
           </div>
         </div>
@@ -325,13 +325,13 @@ const PrivateDocuments: React.FC = () => {
           </div>
           <div className="request-content">
             <h3 className="request-title">
-              ¿Necesitas un documento adicional?
+              {DOCUMENT_MESSAGES.REQUEST_SECTION_TITLE}
             </h3>
             <p className="request-text">
-              Solicita certificados o documentos adicionales a Recursos Humanos
+              {DOCUMENT_MESSAGES.REQUEST_SECTION_TEXT}
             </p>
             <button className="request-btn" onClick={handleRequestDocument}>
-              Solicitar documento
+              {DOCUMENT_MESSAGES.REQUEST_BUTTON}
             </button>
           </div>
         </div>

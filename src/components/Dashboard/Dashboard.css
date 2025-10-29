@@ -5,6 +5,8 @@
   --font-weight-medium: 500;
   --primary-color: #004186;
   --item-icon-background: #E6F0FF;
+  --color-white: #fff;
+  --background: #f7fafc;
 }
 
 .dashboard {
