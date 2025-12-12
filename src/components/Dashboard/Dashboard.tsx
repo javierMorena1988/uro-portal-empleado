@@ -6,6 +6,13 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
+  const handlePayrollClick = (payroll: { id: string; month: string; date: string }) => {
+    // En el futuro, aquí navegarás a la nómina específica
+    console.log('Navegando a nómina:', payroll);
+    // Por ahora, navega a la sección de nóminas
+    onViewChange('payroll');
+  };
+
   const quickAccessItems = [
     {
       id: "payroll",
@@ -74,9 +81,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
   ];
 
   const latestPayrolls = [
-    { month: "Septiembre 2025", date: "30/09/2025" },
-    { month: "Agosto 2025", date: "31/08/2025" },
-    { month: "Julio 2025", date: "31/07/2025" },
+    { id: "payroll-2025-09", month: "Septiembre 2025", date: "30/09/2025" },
+    { id: "payroll-2025-08", month: "Agosto 2025", date: "31/08/2025" },
+    { id: "payroll-2025-07", month: "Julio 2025", date: "31/07/2025" },
   ];
 
   return (
@@ -142,12 +149,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
           <div className="payrolls-card">
             <h2>Últimas nóminas</h2>
             {latestPayrolls.map((payroll, index) => (
-              <div key={index} className="payroll-row">
+              <button 
+                key={index} 
+                className="payroll-row payroll-button"
+                onClick={() => handlePayrollClick(payroll)}
+              >
                 <div className="payroll-info">
                   <h4 className="payroll-month">{payroll.month}</h4>
                   <p className="payroll-date">{payroll.date}</p>
                 </div>
-              </div>
+              </button>
             ))}
             <div className="payroll-footer">
               <button 

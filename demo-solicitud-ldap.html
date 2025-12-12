@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo: Solicitud de Información LDAP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .info-box {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border: 1px solid #e0e0e0;
+        }
+
+        .info-box h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .example {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .example strong {
+            color: #856404;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f5f5f5;
+        }
+
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+
+        .checklist li {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+
+        .checklist li:before {
+            content: "☐ ";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #5568d3;
+        }
+
+        .button-secondary {
+            background: #6c757d;
+        }
+
+        .button-secondary:hover {
+            background: #5a6268;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Solicitud de Información LDAP</h1>
+            <p>Portal Empleado - UROVESA</p>
+        </div>
+
+        <div class="content">
+            <div class="section">
+                <h2>📋 Información que Necesitamos</h2>
+                <p>Para integrar el Portal Empleado con Active Directory / LDAP, necesitamos la siguiente información:</p>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Campo</th>
+                                <th>Ejemplo</th>
+                                <th>Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1</strong></td>
+                                <td>Host del servidor</td>
+                                <td><code>ad.empresa.com</code></td>
+                                <td>Dirección del servidor Active Directory</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2</strong></td>
+                                <td>Puerto LDAPS</td>
+                                <td><code>636</code></td>
+                                <td>Puerto para conexión segura</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3</strong></td>
+                                <td>Base DN</td>
+                                <td><code>dc=empresa,dc=com</code></td>
+                                <td>DN base del dominio</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4</strong></td>
+                                <td>Formato DN usuario</td>
+                                <td><code>CN={username},CN=Users,DC=empresa,DC=com</code></td>
+                                <td>Cómo se construye el DN de un usuario</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5</strong></td>
+                                <td>Cuenta técnica</td>
+                                <td><code>svc_portal_empleado</code></td>
+                                <td>Cuenta con permisos para autenticación y cambio de contraseñas</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6</strong></td>
+                                <td>Políticas contraseña</td>
+                                <td><code>Longitud: 8, Complejidad: Sí</code></td>
+                                <td>Requisitos para validar contraseñas</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📝 Ejemplo de Respuesta Esperada</h2>
+                <div class="example">
+                    <strong>Host del servidor:</strong> ad.urovesa.local<br>
+                    <strong>Puerto LDAPS:</strong> 636<br>
+                    <strong>URL completa:</strong> ldaps://ad.urovesa.local:636<br>
+                    <strong>Base DN:</strong> dc=urovesa,dc=local<br>
+                    <strong>Formato DN de usuario:</strong> CN={username},CN=Users,DC=urovesa,DC=local<br>
+                    <strong>Filtro de búsqueda:</strong> (sAMAccountName={username})<br>
+                    <strong>Nombre cuenta técnica:</strong> svc_portal_empleado<br>
+                    <strong>DN cuenta técnica:</strong> CN=svc_portal_empleado,CN=Users,DC=urovesa,DC=local<br>
+                    <strong>Políticas:</strong><br>
+                    &nbsp;&nbsp;- Longitud mínima: 8 caracteres<br>
+                    &nbsp;&nbsp;- Complejidad: Sí (mayúsculas, minúsculas, números, símbolos)<br>
+                    &nbsp;&nbsp;- Expiración: 90 días<br>
+                    &nbsp;&nbsp;- Historial: No repetir últimas 5<br>
+                    <strong>IP servidor backend:</strong> 192.168.1.100<br>
+                    <strong>Entorno de pruebas:</strong> Sí, usuarios testuser1 y testuser2
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🔍 Cómo Obtener Esta Información (Para Sistemas)</h2>
+                
+                <div class="info-box">
+                    <h3>1. Verificar Base DN</h3>
+                    <div class="code-block">
+Get-ADDomain | Select-Object DistinguishedName
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>2. Verificar Formato DN de Usuario</h3>
+                    <div class="code-block">
+Get-ADUser -Identity "nombre_usuario_ejemplo" | Select-Object DistinguishedName
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>3. Verificar Políticas de Contraseña</h3>
+                    <div class="code-block">
+Get-ADDefaultDomainPasswordPolicy | Format-List
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>4. Probar Conexión LDAPS</h3>
+                    <div class="code-block">
+ldapsearch -x -H ldaps://ad.empresa.com:636 -D "usuario@empresa.com" -W -b "dc=empresa,dc=com" "(objectClass=user)"
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>✅ Checklist de Verificación</h2>
+                <ul class="checklist">
+                    <li>Host/IP del servidor LDAP configurado</li>
+                    <li>Puerto LDAPS (636) confirmado</li>
+                    <li>Base DN del dominio proporcionado</li>
+                    <li>Formato DN de usuario verificado</li>
+                    <li>Cuenta técnica creada con permisos</li>
+                    <li>Contraseña de cuenta técnica (no caduca)</li>
+                    <li>Certificado SSL (si aplica)</li>
+                    <li>Políticas de contraseña documentadas</li>
+                    <li>Configuración de red/firewall verificada</li>
+                    <li>Entorno de pruebas disponible (opcional)</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>🔒 Consideraciones de Seguridad</h2>
+                <div class="success">
+                    ✅ <strong>Seguridad garantizada:</strong> El frontend (React) NUNCA se conecta directamente a LDAP. Toda la comunicación LDAP se realiza desde el backend Node.js.
+                </div>
+                <div class="warning">
+                    ⚠️ <strong>Credenciales:</strong> Todas las credenciales se almacenarán solo en el backend (archivo .env), nunca en el código fuente.
+                </div>
+                <div class="success">
+                    ✅ <strong>Conexión segura:</strong> Usaremos LDAPS (puerto 636) con TLS/SSL para todas las conexiones.
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📧 Próximos Pasos</h2>
+                <p>Una vez que tengamos esta información:</p>
+                <ol style="margin-left: 20px; margin-top: 10px;">
+                    <li>Configuraremos el archivo <code>.env</code> con los valores recibidos</li>
+                    <li>Realizaremos pruebas de conexión con el servidor LDAP</li>
+                    <li>Validaremos la autenticación con usuarios de prueba</li>
+                    <li>Probaremos el cambio de contraseñas</li>
+                    <li>Realizaremos pruebas exhaustivas antes de producción</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Documentos relacionados:</strong></p>
+            <a href="#" class="button">📄 REQUERIMIENTOS_LDAP.md</a>
+            <a href="#" class="button button-secondary">📊 TABLA_SOLICITUD_SISTEMAS.md</a>
+            <a href="#" class="button button-secondary">📋 CHECKLIST_SOLICITUD_SISTEMAS.md</a>
+        </div>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

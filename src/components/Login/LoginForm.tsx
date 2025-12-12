@@ -4,11 +4,15 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../hooks";
 import { useNavigate } from "react-router-dom";
+import { MESSAGES } from "../../constants";
+import OtpInput from "react-otp-input";
+import Setup2FA from "./Setup2FA";
 import "./LoginForm.css";
 
 const loginSchema = z.object({
-  email: z.string().email("Email inválido").min(1, "Email requerido"),
+  username: z.string().min(1, "Usuario o email requerido"),
   password: z.string().min(1, "Contraseña requerida"),
+  twoFactorCode: z.string().optional(),
 });
 
 type LoginData = z.infer<typeof loginSchema>;
@@ -17,6 +21,11 @@ const LoginForm: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = React.useState("");
+  const [requiresTwoFactor, setRequiresTwoFactor] = React.useState(false);
+  const [requires2FASetup, setRequires2FASetup] = React.useState(false);
+  const [twoFactorCode, setTwoFactorCode] = React.useState("");
+  const [username, setUsername] = React.useState("");
+  const [password, setPassword] = React.useState("");
 
   const {
     register,
@@ -28,62 +37,172 @@ const LoginForm: React.FC = () => {
 
   const onSubmit = async (data: LoginData) => {
     setError("");
-    const ok = await login(data.email, data.password);
-    if (ok) {
-      navigate("/");
-    } else {
-      setError("Usuario o contraseña incorrectos");
+    
+    try {
+      // Si ya tenemos código 2FA, intentar login con él
+      if (requiresTwoFactor && twoFactorCode) {
+        const response = await login(data.username, data.password, twoFactorCode);
+        if (response.success) {
+          navigate("/");
+        } else {
+          setError(response.error || "Código de autenticación inválido");
+          setTwoFactorCode(""); // Limpiar código para reintentar
+        }
+        return;
+      }
+
+      // Primer intento de login (sin código 2FA)
+      const response = await login(data.username, data.password);
+      
+      if (response.requires2FASetup) {
+        // Usuario no tiene 2FA configurado - mostrar pantalla de configuración
+        setError(""); // Limpiar cualquier error previo
+        setRequires2FASetup(true);
+        setUsername(data.username);
+        setPassword(data.password);
+        return;
+      } else if (response.requiresTwoFactor) {
+        // Usuario tiene 2FA habilitado, pedir código
+        setRequiresTwoFactor(true);
+        setUsername(data.username);
+        setPassword(data.password);
+      } else if (response.success) {
+        navigate("/");
+      } else {
+        setError(response.error || "Usuario o contraseña incorrectos");
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError("Error al conectar con el servidor");
     }
   };
 
+  // Si requiere configuración de 2FA, mostrar componente de setup
+  if (requires2FASetup) {
+    return (
+      <Setup2FA
+        username={username}
+        password={password}
+        onSetupComplete={async (verifiedCode: string) => {
+          // Después de configurar 2FA, hacer login automáticamente con el código que acaba de verificar
+          setRequires2FASetup(false);
+          setTwoFactorCode(verifiedCode);
+          setRequiresTwoFactor(true);
+          
+          // Hacer login automáticamente con el código 2FA que acaba de verificar
+          try {
+            const response = await login(username, password, verifiedCode);
+            if (response.success) {
+              navigate("/");
+            } else {
+              setError(response.error || "Error al completar el login");
+              setTwoFactorCode(""); // Limpiar código si falla
+            }
+          } catch (error) {
+            console.error('Login error:', error);
+            setError("Error al conectar con el servidor");
+            setTwoFactorCode(""); // Limpiar código si falla
+          }
+        }}
+        onCancel={() => {
+          setRequires2FASetup(false);
+          setUsername("");
+          setPassword("");
+        }}
+      />
+    );
+  }
+
   return (
     <div className="login-container">
-      <form onSubmit={handleSubmit(onSubmit)} className="login-form">
+      <div className="login-card">
         <div className="login-header">
-          <div className="login-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="login-icon-svg">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a7.5 7.5 0 0115 0v.75a.75.75 0 01-.75.75h-13.5a.75.75 0 01-.75-.75V19.5z" />
-            </svg>
+          <div className="login-logo">
+            <img src="/src/assets/urovesa.png" alt="UROVESA" />
           </div>
-          <h2 className="login-title">Iniciar sesión</h2>
+          <h1 className="login-title">{MESSAGES.LOGIN.TITLE}</h1>
+          <p className="login-subtitle">{MESSAGES.LOGIN.SUBTITLE}</p>
         </div>
-        
-        <div className="form-group">
-          <label className="form-label">Email</label>
-          <input
-            type="email"
-            placeholder="nombre@empresa.com"
-            {...register("email")}
-            className="form-input"
-          />
-          {errors.email && (
-            <p className="form-error">{errors.email.message}</p>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="login-form">
+          <div className="form-group">
+            <label className="form-label">
+              Usuario o Email
+            </label>
+            <input
+              type="text"
+              placeholder="usuario o tu.email@empresa.com"
+              {...register("username")}
+              className="form-input"
+            />
+            {errors.username && (
+              <p className="form-error">{errors.username.message}</p>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">
+              {MESSAGES.LOGIN.PASSWORD_PLACEHOLDER}
+            </label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              {...register("password")}
+              className="form-input"
+            />
+            {errors.password && (
+              <p className="form-error">{errors.password.message}</p>
+            )}
+          </div>
+
+          {requiresTwoFactor && (
+            <div className="form-group">
+              <label className="form-label">
+                Código de autenticación de doble factor
+              </label>
+              <div className="otp-input-container">
+                <OtpInput
+                  value={twoFactorCode}
+                  onChange={setTwoFactorCode}
+                  numInputs={6}
+                  renderSeparator={<span>-</span>}
+                  renderInput={(props) => <input {...props} />}
+                  inputStyle={{
+                    width: "3rem",
+                    height: "3rem",
+                    margin: "0 0.25rem",
+                    fontSize: "1.25rem",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    textAlign: "center",
+                  }}
+                />
+              </div>
+              <p className="form-hint">
+                Ingresa el código de 6 dígitos de tu aplicación de autenticación
+              </p>
+            </div>
           )}
-        </div>
-        
-        <div className="form-group">
-          <label className="form-label">Contraseña</label>
-          <input
-            type="password"
-            placeholder="********"
-            {...register("password")}
-            className="form-input"
-          />
-          {errors.password && (
-            <p className="form-error">{errors.password.message}</p>
-          )}
-        </div>
-        
-        {error && <div className="form-error-message">{error}</div>}
-        
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="login-button"
-        >
-          {isSubmitting ? "Accediendo..." : "Entrar"}
-        </button>
-      </form>
+
+          {error && <div className="form-error-message">{error}</div>}
+
+          <button
+            type="submit"
+            disabled={isSubmitting || (requiresTwoFactor && twoFactorCode.length !== 6)}
+            className="login-button"
+          >
+            {isSubmitting 
+              ? "Accediendo..." 
+              : requiresTwoFactor 
+                ? "Verificar código" 
+                : MESSAGES.LOGIN.SUBMIT_BUTTON}
+          </button>
+
+          <a href="#" className="forgot-password-link">
+            ¿Olvidaste tu contraseña?
+          </a>
+        </form>
+      </div>
     </div>
   );
 };

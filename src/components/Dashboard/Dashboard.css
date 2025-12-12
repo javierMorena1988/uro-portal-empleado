@@ -1,12 +1,13 @@
 :root {
   --spacing: 0.25rem;
-  --spacing-medium: 0.25rem;
+  --spacing-medium: 0.5rem;
   --radius: 0.5rem;
   --font-weight-medium: 500;
   --primary-color: #004186;
   --item-icon-background: #E6F0FF;
   --color-white: #fff;
   --background: #f7fafc;
+  --border-color-card: #e5e7eb;
 }
 
 .dashboard {
@@ -75,7 +76,7 @@ h2 {
   border-radius: 0.75rem;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-color-card);
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
   position: relative;
@@ -210,12 +211,31 @@ h2 {
   padding: 0.3rem 0;
 }
 
+.payroll-button {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.payroll-button:hover .payroll-info {
+  background-color: #e6f0ff;
+}
+
+.payroll-button:active .payroll-info {
+  transform: translateY(1px);
+}
+
 .payroll-info {
   display: flex;
   background-color: #f7fafc;
   flex-direction: column;
   padding: calc(var(--spacing) * 3);
   border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
 }
 
 .payroll-month {
@@ -253,7 +273,7 @@ h2 {
   display: inline-block;
   transition: background-color 0.2s;
   cursor: pointer;
-  border: none;
+  border: 1px solid var(--border-color-card);
   white-space: nowrap;
   width: 100%;
   text-align: center;
@@ -269,6 +289,7 @@ h2 {
 /* Help Section */
 .help-section {
   margin-bottom: 2rem;
+  border: 1px solid var(--primary-color);
 }
 
 .help-card {

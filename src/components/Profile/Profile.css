@@ -244,3 +244,225 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* 2FA Styles */
+.two-factor-status {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.status-label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.status-badge.enabled {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.disabled {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.status-description {
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.two-factor-setup {
+  margin-top: 1rem;
+}
+
+.btn-setup-2fa {
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-setup-2fa:hover {
+  background-color: #2563eb;
+}
+
+.two-factor-setup-flow {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.setup-step {
+  padding: 1.5rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.setup-step h4 {
+  margin: 0 0 0.75rem 0;
+  color: #111827;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.setup-step p {
+  margin: 0 0 1rem 0;
+  color: #6b7280;
+}
+
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.5rem;
+  border: 2px solid #e5e7eb;
+  margin: 1rem 0;
+}
+
+.qr-code-image {
+  max-width: 250px;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.setup-instructions {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #eff6ff;
+  border-radius: 0.5rem;
+  border-left: 4px solid #3b82f6;
+}
+
+.setup-instructions p {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.setup-instructions ol {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+  color: #374151;
+}
+
+.setup-instructions li {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.otp-input-container {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.setup-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.btn-verify-2fa {
+  padding: 0.75rem 1.5rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-verify-2fa:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.btn-verify-2fa:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-cancel-2fa {
+  padding: 0.75rem 1.5rem;
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-cancel-2fa:hover:not(:disabled) {
+  background-color: #4b5563;
+}
+
+.btn-cancel-2fa:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.alert {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+}
+
+.alert-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.alert-success {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+@media (max-width: 768px) {
+  .setup-actions {
+    flex-direction: column;
+  }
+  
+  .btn-verify-2fa,
+  .btn-cancel-2fa {
+    width: 100%;
+  }
+  
+  .qr-code-image {
+    max-width: 200px;
+  }
+}
