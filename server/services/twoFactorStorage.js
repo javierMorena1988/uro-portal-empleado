@@ -106,6 +106,15 @@ export function is2FAEnabled(username) {
 }
 
 /**
+ * Verifica si un usuario tiene un secreto 2FA guardado (incluso si no está habilitado)
+ * @param {string} username - Nombre de usuario
+ * @returns {boolean}
+ */
+export function hasSecret(username) {
+  return userSecrets.has(username);
+}
+
+/**
  * Habilita 2FA para un usuario (después de verificar el primer código)
  * @param {string} username - Nombre de usuario
  */

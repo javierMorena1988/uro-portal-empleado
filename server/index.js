@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { generateSecret, generateQRCode, verifyToken } from './services/twoFactorService.js';
-import { saveSecret, getSecret, is2FAEnabled, enable2FA, disable2FA } from './services/twoFactorStorage.js';
+import { saveSecret, getSecret, is2FAEnabled, enable2FA, disable2FA, hasSecret } from './services/twoFactorStorage.js';
 
 // Obtener el directorio actual del módulo
 const __filename = fileURLToPath(import.meta.url);
@@ -219,11 +219,24 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Verificar si el usuario tiene 2FA habilitado
     const has2FA = is2FAEnabled(username);
+    const hasStoredSecret = hasSecret(username);
     // eslint-disable-next-line no-console
-    console.log('[Login] Usuario tiene 2FA habilitado:', has2FA);
+    console.log('[Login] Usuario tiene 2FA habilitado:', has2FA, 'Tiene secreto guardado:', hasStoredSecret);
     
-    // 2FA es OBLIGATORIO - Si no tiene 2FA configurado, debe configurarlo primero
-    if (!has2FA) {
+    // Si tiene un secreto guardado (incluso si no está habilitado), primero intentar con código
+    // Esto permite que usuarios que ya escanearon el QR puedan usar el código sin reconfigurar
+    if (hasStoredSecret && !twoFactorCode) {
+      // eslint-disable-next-line no-console
+      console.log('[Login] Usuario tiene secreto guardado, requiere código 2FA');
+      return res.status(200).json({
+        success: false,
+        requiresTwoFactor: true,
+        message: 'Se requiere código de autenticación de doble factor',
+      });
+    }
+
+    // Si no tiene secreto guardado, debe configurarlo primero
+    if (!hasStoredSecret) {
       return res.status(403).json({
         success: false,
         requires2FASetup: true,
@@ -232,8 +245,8 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
     
-    // Si tiene 2FA habilitado, SIEMPRE requiere el código
-    if (!twoFactorCode) {
+    // Si tiene 2FA habilitado pero no tiene código, pedirlo
+    if (has2FA && !twoFactorCode) {
       // eslint-disable-next-line no-console
       console.log('[Login] Requiere código 2FA');
       return res.status(200).json({
@@ -243,13 +256,22 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Verificar el código 2FA
-    const userSecret = getSecret(username);
-    if (!userSecret || !verifyToken(userSecret.secret, twoFactorCode)) {
-      return res.status(401).json({
-        success: false,
-        error: 'Código de autenticación de doble factor inválido',
-      });
+    // Si tiene código, verificar el código 2FA
+    if (twoFactorCode) {
+      const userSecret = getSecret(username);
+      if (!userSecret || !verifyToken(userSecret.secret, twoFactorCode)) {
+        return res.status(401).json({
+          success: false,
+          error: 'Código de autenticación de doble factor inválido',
+        });
+      }
+      
+      // Si el código es válido pero 2FA no estaba habilitado, habilitarlo ahora
+      if (!has2FA) {
+        // eslint-disable-next-line no-console
+        console.log('[Login] Código válido, habilitando 2FA para usuario:', username);
+        await enable2FA(username);
+      }
     }
 
     // Generar token JWT
@@ -429,11 +451,19 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
       }
     }
 
-    // Verificar si ya tiene 2FA habilitado
+    // Verificar si ya tiene 2FA habilitado o tiene un secreto guardado
     if (is2FAEnabled(username)) {
       return res.status(400).json({
         success: false,
-        error: '2FA ya está configurado para este usuario',
+        error: '2FA ya está configurado para este usuario. Si ya escaneaste el QR, simplemente ingresa el código de 6 dígitos de tu aplicación de autenticación.',
+      });
+    }
+    
+    // Si tiene un secreto guardado pero no está habilitado, sugerir usar el código existente
+    if (hasSecret(username)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ya tienes un código 2FA configurado. Por favor, ingresa el código de 6 dígitos de tu aplicación de autenticación. Si no tienes acceso, contacta al administrador.',
       });
     }
 
