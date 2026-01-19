@@ -96,11 +96,18 @@ app.post('/api/therefore/executeSingleQuery', async (req, res) => {
   }
 });
 
-// GET /api/therefore/getDocument?docNo=123
-app.get('/api/therefore/getDocument', async (req, res) => {
+// POST /api/therefore/getDocument
+// Body: { DocNo: number, VersionNo?: number }
+app.post('/api/therefore/getDocument', async (req, res) => {
   try {
-    const { docNo } = req.query;
-    if (!docNo) return res.status(400).json({ message: 'Missing docNo' });
+    const { DocNo, VersionNo } = req.body;
+    
+    if (!DocNo) {
+      return res.status(400).json({ 
+        message: 'Missing DocNo',
+        error: 'DocNo es requerido en el body de la petición'
+      });
+    }
     
     const base = process.env.THEREFORE_BASE_URL;
     if (!base) {
@@ -122,13 +129,25 @@ app.get('/api/therefore/getDocument', async (req, res) => {
       });
     }
 
-    const url = joinUrl(base, `Document/GetDocument?DocNo=${encodeURIComponent(docNo)}`);
+    // Construir el body para Therefore
+    const requestBody = { DocNo };
+    if (VersionNo !== undefined) {
+      requestBody.VersionNo = VersionNo;
+    }
+
+    const url = joinUrl(base, 'GetDocument');
     // eslint-disable-next-line no-console
-    console.log('[Therefore] Consultando documento:', docNo);
+    console.log('[Therefore] Consultando documento:', DocNo, VersionNo ? `versión ${VersionNo}` : '(última versión)');
     // eslint-disable-next-line no-console
     console.log('[Therefore] URL:', url);
+    // eslint-disable-next-line no-console
+    console.log('[Therefore] Body:', JSON.stringify(requestBody));
     
-    const resp = await fetch(url, { headers: buildAuthHeaders() });
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(requestBody),
+    });
     
     // eslint-disable-next-line no-console
     console.log('[Therefore] Respuesta status:', resp.status);
@@ -153,6 +172,188 @@ app.get('/api/therefore/getDocument', async (req, res) => {
     console.error('[Therefore] Stack:', err.stack);
     res.status(500).json({ 
       message: 'GetDocument failed',
+      error: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+  }
+});
+
+// POST /api/therefore/downloadDocument
+// Body: { DocNo: number, VersionNo?: number }
+// Descarga el archivo del documento desde Therefore
+app.post('/api/therefore/downloadDocument', async (req, res) => {
+  try {
+    const { DocNo, VersionNo } = req.body;
+    
+    if (!DocNo) {
+      return res.status(400).json({ 
+        message: 'Missing DocNo',
+        error: 'DocNo es requerido en el body de la petición'
+      });
+    }
+    
+    const base = process.env.THEREFORE_BASE_URL;
+    if (!base) {
+      // eslint-disable-next-line no-console
+      console.error('[Therefore] THEREFORE_BASE_URL no está configurado');
+      return res.status(500).json({ 
+        message: 'DownloadDocument failed: THEREFORE_BASE_URL no configurado',
+        error: 'Configura THEREFORE_BASE_URL en el archivo .env'
+      });
+    }
+
+    const { THEREFORE_USERNAME, THEREFORE_PASSWORD } = process.env;
+    if (!THEREFORE_USERNAME || !THEREFORE_PASSWORD) {
+      // eslint-disable-next-line no-console
+      console.error('[Therefore] Credenciales no configuradas');
+      return res.status(500).json({ 
+        message: 'DownloadDocument failed: Credenciales de Therefore no configuradas',
+        error: 'Configura THEREFORE_USERNAME y THEREFORE_PASSWORD en el archivo .env'
+      });
+    }
+
+    // Construir el body para Therefore según la documentación
+    // https://therefore.net/help/2024/en-us/AR/SDK/WebAPI/the_webapi_operation_getdocument.html
+    const requestBody = { 
+      DocNo,
+      IsStreamsInfoAndDataNeeded: true, // Necesario para obtener el contenido del archivo
+      IsStreamDataBase64JSONNeeded: true // Para obtener stream data como Base64 string en JSON
+    };
+    if (VersionNo !== undefined) {
+      requestBody.VersionNo = VersionNo;
+    } else {
+      requestBody.VersionNo = 0; // 0 = última versión según la documentación
+    }
+
+    // Usar GetDocument directamente como me indicaron
+    const url = joinUrl(base, 'GetDocument');
+    // eslint-disable-next-line no-console
+    console.log('[Therefore] Descargando documento:', DocNo, VersionNo ? `versión ${VersionNo}` : '(última versión)');
+    // eslint-disable-next-line no-console
+    console.log('[Therefore] URL:', url);
+    // eslint-disable-next-line no-console
+    console.log('[Therefore] Body:', JSON.stringify(requestBody));
+    
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(requestBody),
+    });
+    
+    // eslint-disable-next-line no-console
+    console.log('[Therefore] Respuesta status:', resp.status);
+    // eslint-disable-next-line no-console
+    console.log('[Therefore] Content-Type:', resp.headers.get('content-type'));
+    
+    if (!resp.ok) {
+      // Verificar si es error de autenticación
+      let errorText = await resp.text().catch(() => 'Error desconocido');
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.WSError && errorJson.WSError.ErrorCodeString === 'InvalidLogin') {
+          // eslint-disable-next-line no-console
+          console.error('[Therefore] Error de autenticación con GetDocument');
+          return res.status(401).json({ 
+            message: 'Error de autenticación con Therefore',
+            error: 'Credenciales inválidas. Verifica THEREFORE_USERNAME y THEREFORE_PASSWORD en el archivo .env',
+            details: errorJson.WSError.ErrorMessage || 'Invalid user name or password',
+            status: 401
+          });
+        }
+        if (errorJson.WSError && errorJson.WSError.ErrorMessage) {
+          errorText = errorJson.WSError.ErrorMessage;
+        }
+      } catch (e) {
+        // Si no es JSON, usar el texto tal cual
+      }
+      
+      // eslint-disable-next-line no-console
+      console.error('[Therefore] Error en respuesta:', errorText);
+      return res.status(resp.status).json({ 
+        message: 'DownloadDocument failed',
+        error: errorText,
+        status: resp.status
+      });
+    }
+    
+    // GetDocument siempre devuelve JSON según la documentación
+    const docData = await resp.json().catch(() => null);
+    
+    if (!docData) {
+      return res.status(500).json({ 
+        message: 'DownloadDocument failed',
+        error: 'No se pudo parsear la respuesta de Therefore'
+      });
+    }
+    
+    // eslint-disable-next-line no-console
+    console.log('[Therefore] GetDocument devolvió JSON');
+    
+    // Según la documentación, los streams están en StreamsInfo
+    // https://therefore.net/help/2024/en-us/AR/SDK/WebAPI/the_webapi_operation_getdocument.html
+    if (docData.StreamsInfo && docData.StreamsInfo.length > 0) {
+      const stream = docData.StreamsInfo[0]; // Tomar el primer stream
+      
+      // Intentar obtener los datos del stream
+      let streamData = null;
+      let filename = stream.FileName || `document_${DocNo}.pdf`;
+      
+      // Preferir StreamDataBase64JSON si está disponible (más fácil de manejar en JSON)
+      if (stream.StreamDataBase64JSON) {
+        streamData = Buffer.from(stream.StreamDataBase64JSON, 'base64');
+        // eslint-disable-next-line no-console
+        console.log('[Therefore] Usando StreamDataBase64JSON');
+      } else if (stream.StreamData) {
+        // StreamData puede venir como base64Binary (array de bytes en JSON)
+        if (typeof stream.StreamData === 'string') {
+          streamData = Buffer.from(stream.StreamData, 'base64');
+        } else if (Array.isArray(stream.StreamData)) {
+          // Si viene como array de bytes
+          streamData = Buffer.from(stream.StreamData);
+        } else {
+          streamData = Buffer.from(stream.StreamData);
+        }
+        // eslint-disable-next-line no-console
+        console.log('[Therefore] Usando StreamData');
+      }
+      
+      if (streamData) {
+        // Determinar el tipo de contenido basado en la extensión del archivo
+        const ext = filename.split('.').pop()?.toLowerCase();
+        const contentTypeMap = {
+          'pdf': 'application/pdf',
+          'doc': 'application/msword',
+          'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'xls': 'application/vnd.ms-excel',
+          'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+        };
+        const contentType = contentTypeMap[ext] || 'application/octet-stream';
+        
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', streamData.length);
+        return res.send(streamData);
+      }
+    }
+    
+    // Si no hay streams o no se pudo extraer el contenido
+    // eslint-disable-next-line no-console
+    console.warn('[Therefore] No se encontró contenido del stream en la respuesta');
+    return res.status(500).json({ 
+      message: 'DownloadDocument failed',
+      error: 'No se encontró contenido del documento en la respuesta',
+      details: 'El documento puede no tener streams o los datos no están disponibles'
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[Therefore] Error en downloadDocument:', err.message);
+    // eslint-disable-next-line no-console
+    console.error('[Therefore] Stack:', err.stack);
+    res.status(500).json({ 
+      message: 'DownloadDocument failed',
       error: err.message,
       details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
@@ -610,11 +811,56 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
+/**
+ * GET /api/therefore/config-check
+ * Endpoint de diagnóstico para verificar configuración de Therefore (SOLO DESARROLLO)
+ */
+if (process.env.NODE_ENV === 'development') {
+  app.get('/api/therefore/config-check', async (req, res) => {
+    const config = {
+      THEREFORE_BASE_URL: process.env.THEREFORE_BASE_URL ? '✅ Configurado' : '❌ No configurado',
+      THEREFORE_USERNAME: process.env.THEREFORE_USERNAME ? '✅ Configurado' : '❌ No configurado',
+      THEREFORE_PASSWORD: process.env.THEREFORE_PASSWORD ? '✅ Configurado' : '❌ No configurado',
+      THEREFORE_TENANT: process.env.THEREFORE_TENANT ? '✅ Configurado (opcional)' : '⚠️ No configurado (opcional)',
+    };
+    
+    const allConfigured = process.env.THEREFORE_BASE_URL && 
+                         process.env.THEREFORE_USERNAME && 
+                         process.env.THEREFORE_PASSWORD;
+    
+    res.json({
+      success: allConfigured,
+      message: allConfigured 
+        ? 'Todas las variables de Therefore están configuradas' 
+        : 'Faltan variables de configuración de Therefore',
+      config,
+      instructions: !allConfigured ? {
+        step1: 'Crea un archivo .env en la raíz del proyecto (si no existe)',
+        step2: 'Copia el contenido de env.example.txt',
+        step3: 'Configura las siguientes variables:',
+        variables: {
+          THEREFORE_BASE_URL: 'https://therefore.urovesa.com:443/theservice/v0001/restun',
+          THEREFORE_USERNAME: 'tu_usuario_therefore',
+          THEREFORE_PASSWORD: 'tu_contraseña_therefore',
+          THEREFORE_TENANT: 'nombre_tenant (opcional)',
+        },
+        step4: 'Reinicia el servidor después de configurar',
+      } : null,
+    });
+  });
+}
+
 app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`[Server] Listening on http://localhost:${port}`);
   // eslint-disable-next-line no-console
-  console.log(`[Therefore Proxy] Enabled`);
+  console.log(`[Therefore Proxy] ${missing.length === 0 ? 'Enabled' : 'Disabled - Missing env vars'}`);
+  if (missing.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[Therefore Proxy] Missing: ${missing.join(', ')}`);
+    // eslint-disable-next-line no-console
+    console.log(`[Therefore Proxy] Visita http://localhost:${port}/api/therefore/config-check para ver instrucciones`);
+  }
   if (useMockAuth) {
     // eslint-disable-next-line no-console
     console.log(`[Auth] MOCK mode enabled - Using test users (testuser/password123, admin/admin123)`);
