@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { testTherefore, downloadDocument, viewDocument } from '../../services/therefore';
+import { downloadDocument, viewDocument } from '../../services/therefore';
 import './Payroll.css';
 
 interface PayrollItem {
@@ -11,8 +11,6 @@ interface PayrollItem {
 }
 
 const Payroll: React.FC = () => {
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -110,38 +108,6 @@ const Payroll: React.FC = () => {
     }
   };
 
-  const handleTestTherefore = async () => {
-    setTesting(true);
-    setTestResult(null);
-    
-    try {
-      const result = await testTherefore(1);
-      
-      if (result.success) {
-        setTestResult({
-          success: true,
-          message: '✅ Therefore funciona correctamente! Revisa la consola para ver los detalles.',
-        });
-      } else {
-        let errorMsg = `❌ Error: ${result.error}`;
-        if (result.details && result.details !== result.error) {
-          errorMsg += `\n\n📋 Detalles: ${result.details}`;
-        }
-        setTestResult({
-          success: false,
-          message: errorMsg,
-        });
-      }
-    } catch (error) {
-      setTestResult({
-        success: false,
-        message: `❌ Error inesperado: ${error instanceof Error ? error.message : 'Error desconocido'}`,
-      });
-    } finally {
-      setTesting(false);
-    }
-  };
-
   return (
     <div className="payroll-container">
       <div className="payroll-header">
@@ -150,19 +116,7 @@ const Payroll: React.FC = () => {
             <h1 className="payroll-title">Nóminas</h1>
             <p className="payroll-subtitle">Consulta y descarga tus nóminas</p>
           </div>
-          <button
-            onClick={handleTestTherefore}
-            disabled={testing}
-            className="payroll-test-btn"
-          >
-            {testing ? '🔄 Probando...' : '🧪 Probar Therefore'}
-          </button>
         </div>
-        {testResult && (
-          <div className={`payroll-test-result ${testResult.success ? 'success' : 'error'}`}>
-            {testResult.message}
-          </div>
-        )}
       </div>
 
       <div className="payroll-content">
@@ -178,26 +132,8 @@ const Payroll: React.FC = () => {
             ⚠️ {downloadError || viewError}
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
           <h2 className="payroll-section-title" style={{ margin: 0 }}>Historial de nóminas</h2>
-          <button
-            onClick={handleTestTherefore}
-            disabled={testing}
-            className="payroll-test-btn"
-            style={{ 
-              backgroundColor: '#48bb78', 
-              color: 'white', 
-              padding: '0.75rem 1.5rem', 
-              borderRadius: '8px', 
-              border: 'none', 
-              fontWeight: 600,
-              cursor: testing ? 'not-allowed' : 'pointer',
-              fontSize: '0.875rem',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}
-          >
-            {testing ? '🔄 Probando...' : '🧪 Probar Therefore'}
-          </button>
         </div>
         
         <div className="payroll-list">
