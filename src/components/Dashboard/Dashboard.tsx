@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "../../hooks";
 import "./Dashboard.css";
 
 interface DashboardProps {
@@ -6,6 +7,40 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
+  const { user } = useAuth();
+  
+  // Obtener el nombre del empleado del campo EMPLEADO
+  const empleadoNombre: string = (() => {
+    const emp = user?.empleado;
+    if (!emp) return user?.name || 'Usuario';
+    
+    // Verificar si es un string directamente
+    if (typeof emp === 'string') return emp;
+    
+    // Buscar en las propiedades del objeto empleado
+    const nombre = (emp as Record<string, unknown>)?.EMPLEADO || 
+                   (emp as Record<string, unknown>)?.empleado || 
+                   (emp as Record<string, unknown>)?.nombreEmpleado || 
+                   (emp as Record<string, unknown>)?.NombreEmpleado;
+    
+    // Asegurar que sea string
+    if (typeof nombre === 'string') return nombre;
+    if (typeof nombre === 'number') return String(nombre);
+    
+    return user?.name || 'Usuario';
+  })();
+  
+  // Obtener fecha actual formateada
+  const getCurrentDate = () => {
+    const today = new Date();
+    const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const dayName = days[today.getDay()];
+    const day = today.getDate();
+    const month = months[today.getMonth()];
+    const year = today.getFullYear();
+    return `Hoy es ${dayName}, ${day} de ${month} de ${year}`;
+  };
   const handlePayrollClick = (payroll: { id: string; month: string; date: string }) => {
     // En el futuro, aquí navegarás a la nómina específica
     console.log('Navegando a nómina:', payroll);
@@ -52,39 +87,30 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
         </svg>
       ),
     },
-    {
-      id: "private-docs",
-      title: "Documentos privados",
-      description: "Contratos, certificados y documentación personal",
-      icon: (
-        <svg
-          width="28"
-          height="28"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <circle cx="12" cy="16" r="1" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-      ),
-    },
+    // Documentos privados oculto temporalmente
+    // {
+    //   id: "private-docs",
+    //   title: "Documentos privados",
+    //   description: "Contratos, certificados y documentación personal",
+    //   icon: (
+    //     <svg
+    //       width="28"
+    //       height="28"
+    //       viewBox="0 0 24 24"
+    //       fill="none"
+    //       stroke="currentColor"
+    //       strokeWidth="2"
+    //     >
+    //       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    //       <circle cx="12" cy="16" r="1" />
+    //       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    //     </svg>
+    //   ),
+    // },
   ];
 
-  const personalData = [
-    { label: "Nombre completo", value: "Beatriz Rodríguez Donsión" },
-    { label: "Departamento", value: "Tecnología" },
-    { label: "Fecha de inicio", value: "15/03/2022" },
-    { label: "Tipo de contrato", value: "Indefinido" },
-  ];
-
-  const latestPayrolls = [
-    { id: "payroll-2025-09", month: "Septiembre 2025", date: "30/09/2025" },
-    { id: "payroll-2025-08", month: "Agosto 2025", date: "31/08/2025" },
-    { id: "payroll-2025-07", month: "Julio 2025", date: "31/07/2025" },
-  ];
+  // Nóminas - por ahora vacío, se cargarán desde la API cuando esté disponible
+  const latestPayrolls: Array<{ id: string; month: string; date: string }> = [];
 
   return (
     <div className="dashboard">
@@ -105,8 +131,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
             </svg>
           </div>
           <div className="welcome-text">
-            <h1>Bienvenida, Beatriz Rodríguez Donsión</h1>
-            <p>Hoy es viernes, 24 de octubre de 2025</p>
+            <h1>Bienvenida, {empleadoNombre}</h1>
+            <p>{getCurrentDate()}</p>
           </div>
         </div>
       </div>
@@ -131,8 +157,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
 
       {/* Personal Data and Payrolls Container */}
       <div className="data-payrolls-container">
-        {/* Personal Data Section */}
-        <div className="personal-data-section">
+        {/* Personal Data Section - Oculto temporalmente */}
+        {/* <div className="personal-data-section">
           <div className="personal-data-card">
             <h2>Mis datos</h2>
             {personalData.map((data, index) => (
@@ -142,32 +168,40 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Latest Payrolls Section */}
         <div className="payrolls-section">
           <div className="payrolls-card">
             <h2>Últimas nóminas</h2>
-            {latestPayrolls.map((payroll, index) => (
-              <button 
-                key={index} 
-                className="payroll-row payroll-button"
-                onClick={() => handlePayrollClick(payroll)}
-              >
-                <div className="payroll-info">
-                  <h4 className="payroll-month">{payroll.month}</h4>
-                  <p className="payroll-date">{payroll.date}</p>
+            {latestPayrolls.length > 0 ? (
+              <>
+                {latestPayrolls.map((payroll, index) => (
+                  <button 
+                    key={index} 
+                    className="payroll-row payroll-button"
+                    onClick={() => handlePayrollClick(payroll)}
+                  >
+                    <div className="payroll-info">
+                      <h4 className="payroll-month">{payroll.month}</h4>
+                      <p className="payroll-date">{payroll.date}</p>
+                    </div>
+                  </button>
+                ))}
+                <div className="payroll-footer">
+                  <button 
+                    className="view-all-link"
+                    onClick={() => onViewChange('payroll')}
+                  >
+                    Ver todas las nóminas
+                  </button>
                 </div>
-              </button>
-            ))}
-            <div className="payroll-footer">
-              <button 
-                className="view-all-link"
-                onClick={() => onViewChange('payroll')}
-              >
-                Ver todas las nóminas
-              </button>
-            </div>
+              </>
+            ) : (
+              <div className="payroll-empty">
+                <p>No hay nóminas disponibles</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

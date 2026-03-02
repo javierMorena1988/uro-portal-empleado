@@ -286,6 +286,17 @@ h2 {
   text-decoration: none;
 }
 
+.payroll-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #666;
+}
+
+.payroll-empty p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
 /* Help Section */
 .help-section {
   margin-bottom: 2rem;

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { generateSecret, generateQRCode, verifyToken } from './services/twoFactorService.js';
 import { saveSecret, getSecret, is2FAEnabled, enable2FA, disable2FA, hasSecret } from './services/twoFactorStorage.js';
+import { findEmpleadoByEmail } from './services/empleadosService.js';
 
 // Obtener el directorio actual del módulo
 const __filename = fileURLToPath(import.meta.url);
@@ -22,16 +23,38 @@ console.log('[Config] MOCK_AUTH value:', process.env.MOCK_AUTH);
 // eslint-disable-next-line no-console
 console.log('[Config] useMockAuth:', useMockAuth);
 
-// Importar servicios (solo mock si estamos en modo mock)
+// Importar servicios
 import * as mockAuthService from './services/mockAuthService.js';
+import * as ldapAuthService from './services/ldapService.js';
 
-// Seleccionar qué servicio usar (SIEMPRE mock por ahora para pruebas)
-const authService = mockAuthService;
-const authenticateUser = authService.authenticateUser;
-const changePassword = authService.changePassword;
+// Seleccionar qué servicio usar según configuración
+let authService;
+let authenticateUser;
+let changePassword;
 
-// eslint-disable-next-line no-console
-console.log('[Auth] Using MOCK authentication service (no LDAP required)');
+if (useMockAuth) {
+  authService = mockAuthService;
+  // eslint-disable-next-line no-console
+  console.log('[Auth] Using MOCK authentication service (no LDAP required)');
+} else {
+  authService = ldapAuthService;
+  // eslint-disable-next-line no-console
+  console.log('[Auth] Using LDAP authentication service (real Active Directory)');
+  
+  // Verificar variables de entorno LDAP
+  const ldapRequiredVars = ['LDAP_URL', 'LDAP_BASE_DN', 'LDAP_ADMIN_DN', 'LDAP_ADMIN_PASSWORD'];
+  const missingLdapVars = ldapRequiredVars.filter((k) => !process.env[k]);
+  if (missingLdapVars.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error('[LDAP Service] Missing env vars (LDAP no configurado):', missingLdapVars.join(', '));
+    // eslint-disable-next-line no-console
+    console.error('[LDAP Service] Para habilitar LDAP, configura estas variables en .env');
+  }
+}
+
+authenticateUser = authService.authenticateUser;
+changePassword = authService.changePassword;
+
 // eslint-disable-next-line no-console
 console.log('[Auth] authenticateUser type:', typeof authenticateUser);
 
@@ -82,8 +105,8 @@ function joinUrl(...parts) {
 // POST /api/therefore/executeSingleQuery
 app.post('/api/therefore/executeSingleQuery', async (req, res) => {
   try {
-    const base = process.env.THEREFORE_BASE_URL; // e.g., https://myserver.com/theservice/v0001/restun
-    const url = joinUrl(base, 'Document/ExecuteSingleQuery');
+    const base = process.env.THEREFORE_BASE_URL; // e.g., https://therefore.urovesa.com:443/theservice/v0001/restun
+    const url = joinUrl(base, 'ExecuteSingleQuery');
     const resp = await fetch(url, {
       method: 'POST',
       headers: buildAuthHeaders(),
@@ -93,6 +116,159 @@ app.post('/api/therefore/executeSingleQuery', async (req, res) => {
     res.status(resp.status).json(data ?? {});
   } catch (err) {
     res.status(500).json({ message: 'ExecuteSingleQuery failed' });
+  }
+});
+
+// POST /api/therefore/publicDocuments
+// Obtiene documentos públicos para un empleado usando ExecuteSingleQuery
+// Body: { idEmpleado: string }
+app.post('/api/therefore/publicDocuments', async (req, res) => {
+  try {
+    const { idEmpleado } = req.body;
+    
+    if (!idEmpleado) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'idEmpleado es requerido' 
+      });
+    }
+    
+    const base = process.env.THEREFORE_BASE_URL;
+    if (!base) {
+      return res.status(500).json({ 
+        success: false,
+        error: 'THEREFORE_BASE_URL no configurado' 
+      });
+    }
+
+    const { THEREFORE_USERNAME, THEREFORE_PASSWORD } = process.env;
+    if (!THEREFORE_USERNAME || !THEREFORE_PASSWORD) {
+      return res.status(500).json({ 
+        success: false,
+        error: 'Credenciales de Therefore no configuradas' 
+      });
+    }
+
+    // Construir la petición EXACTAMENTE como se proporcionó
+    const requestBody = {
+      FullText: '',
+      Query: {
+        CategoryNo: 64,
+        Conditions: [{
+          Condition: String(idEmpleado),
+          FieldNoOrName: 'idEmpleado',
+          TimeZone: 0
+        }],
+        FileByColName: '',
+        FileByFieldNo: 0,
+        MaxRows: 100,
+        Mode: 0,
+        OrderByFieldsNoOrNames: [],
+        RowBlockSize: 100,
+        SelectedFieldsNoOrNames: ['nombreDocumento', 'tipoDocumento'],
+        GroupByFieldsNoOrNames: [],
+        IsPersonalQuery: false,
+        QueryNo: 2147483647,
+        FullText: ''
+      }
+    };
+
+    const url = joinUrl(base, 'ExecuteSingleQuery');
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] Consultando documentos para empleado:', idEmpleado);
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] Request body:', JSON.stringify(requestBody, null, 2));
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] URL:', url);
+    
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(requestBody),
+    });
+    
+    if (!resp.ok) {
+      const errorText = await resp.text().catch(() => 'Error desconocido');
+      // eslint-disable-next-line no-console
+      console.error('[PublicDocuments] Error en respuesta:', errorText);
+      return res.status(resp.status).json({ 
+        success: false,
+        error: errorText,
+        status: resp.status
+      });
+    }
+    
+    const data = await resp.json().catch(() => null);
+    
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] Respuesta completa de Therefore:', JSON.stringify(data, null, 2));
+    
+    // Extraer los documentos de la respuesta de Therefore
+    // La estructura es: QueryResult.ResultRows
+    let documents = [];
+    if (data && data.QueryResult && data.QueryResult.ResultRows && Array.isArray(data.QueryResult.ResultRows)) {
+      documents = data.QueryResult.ResultRows;
+      // eslint-disable-next-line no-console
+      console.log('[PublicDocuments] Documentos encontrados en QueryResult.ResultRows:', documents.length);
+    } else if (data && Array.isArray(data)) {
+      documents = data;
+    } else if (data && data.Results && Array.isArray(data.Results)) {
+      documents = data.Results;
+    } else if (data && data.Documents && Array.isArray(data.Documents)) {
+      documents = data.Documents;
+    } else if (data && data.Query && data.Query.Results && Array.isArray(data.Query.Results)) {
+      documents = data.Query.Results;
+    } else if (data && typeof data === 'object') {
+      // Si es un objeto, intentar encontrar arrays dentro
+      for (const key in data) {
+        if (Array.isArray(data[key])) {
+          documents = data[key];
+          // eslint-disable-next-line no-console
+          console.log(`[PublicDocuments] Documentos encontrados en clave '${key}':`, documents.length);
+          break;
+        }
+      }
+    }
+    
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] Documentos extraídos:', documents.length);
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] Primer documento (ejemplo):', documents[0] || 'No hay documentos');
+    
+    // Si no encontramos documentos, devolver la estructura completa para debug
+    if (documents.length === 0 && data) {
+      // eslint-disable-next-line no-console
+      console.log('[PublicDocuments] ⚠️ No se encontraron documentos. Estructura de respuesta:', Object.keys(data));
+      // eslint-disable-next-line no-console
+      console.log('[PublicDocuments] Tipo de respuesta:', typeof data);
+      // eslint-disable-next-line no-console
+      console.log('[PublicDocuments] ¿Es array?', Array.isArray(data));
+    }
+    
+    // Siempre incluir debug para ver qué está devolviendo Therefore
+    res.json({
+      success: true,
+      documents,
+      total: documents.length,
+      // Incluir la respuesta raw para debug (siempre, no solo en desarrollo)
+      debug: {
+        rawResponse: data,
+        responseType: typeof data,
+        isArray: Array.isArray(data),
+        keys: data && typeof data === 'object' && !Array.isArray(data) ? Object.keys(data) : null,
+        hasResults: data && data.Results ? true : false,
+        hasDocuments: data && data.Documents ? true : false,
+        hasQuery: data && data.Query ? true : false,
+      },
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[PublicDocuments] Error:', err.message);
+    res.status(500).json({ 
+      success: false,
+      error: err.message || 'Error al obtener documentos públicos',
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 
@@ -377,6 +553,113 @@ app.post('/api/therefore/createDocument', async (req, res) => {
   }
 });
 
+// ==================== ENDPOINT GET DICTIONARY INFO ====================
+/**
+ * POST /api/therefore/getDictionaryInfo
+ * Obtiene información del diccionario de Therefore (descripciones de tipos de documento)
+ * Body: { ByDictionaryID: number }
+ */
+app.post('/api/therefore/getDictionaryInfo', async (req, res) => {
+  try {
+    const { ByDictionaryID } = req.body;
+    
+    if (!ByDictionaryID) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'ByDictionaryID es requerido' 
+      });
+    }
+    
+    const base = process.env.THEREFORE_BASE_URL;
+    if (!base) {
+      return res.status(500).json({ 
+        success: false,
+        error: 'THEREFORE_BASE_URL no configurado' 
+      });
+    }
+
+    const { THEREFORE_USERNAME, THEREFORE_PASSWORD } = process.env;
+    if (!THEREFORE_USERNAME || !THEREFORE_PASSWORD) {
+      return res.status(500).json({ 
+        success: false,
+        error: 'Credenciales de Therefore no configuradas' 
+      });
+    }
+
+    const requestBody = {
+      ByDictionaryID: Number(ByDictionaryID),
+    };
+
+    const url = joinUrl(base, 'GetDictionaryInfo');
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] Consultando diccionario:', ByDictionaryID);
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] URL:', url);
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] Request body:', JSON.stringify(requestBody, null, 2));
+    
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(requestBody),
+    });
+    
+    if (!resp.ok) {
+      const errorText = await resp.text().catch(() => 'Error desconocido');
+      // eslint-disable-next-line no-console
+      console.error('[GetDictionaryInfo] Error en respuesta:', errorText);
+      return res.status(resp.status).json({ 
+        success: false,
+        error: errorText,
+        status: resp.status
+      });
+    }
+    
+    const data = await resp.json().catch(() => null);
+    
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] Respuesta completa de Therefore:', JSON.stringify(data, null, 2));
+    
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[GetDictionaryInfo] Error:', err.message);
+    res.status(500).json({ 
+      success: false,
+      error: err.message || 'Error al obtener información del diccionario',
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+  }
+});
+
+// ==================== ENDPOINT DEBUG EMPLEADOS ====================
+/**
+ * GET /api/debug/empleados
+ * Endpoint temporal para debug - muestra la respuesta completa de la API de empleados
+ */
+app.get('/api/debug/empleados', async (req, res) => {
+  try {
+    const { getEmpleadosList } = await import('./services/empleadosService.js');
+    const empleados = await getEmpleadosList();
+    
+    res.json({
+      success: true,
+      total: empleados.length,
+      empleados: empleados.slice(0, 10), // Primeros 10 para no saturar
+      message: 'Endpoint de debug - revisa la consola del servidor para más detalles',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
+  }
+});
+
 // ==================== ENDPOINTS LDAP/AUTH ====================
 
 /**
@@ -398,6 +681,48 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
+    // Normalizar username: si viene como email, extraer la parte antes del @
+    let cleanUsername = String(username).trim().toLowerCase();
+    let userEmail = String(username).trim().toLowerCase();
+    
+    // Si viene como email, guardar el email completo y extraer username
+    if (cleanUsername.includes('@')) {
+      userEmail = cleanUsername; // Mantener email completo
+      cleanUsername = cleanUsername.split('@')[0];
+      // eslint-disable-next-line no-console
+      console.log('[Login] Username viene como email, extrayendo:', cleanUsername);
+    } else {
+      // Si no viene como email, construir email asumiendo dominio
+      userEmail = `${cleanUsername}@urovesa.com`;
+    }
+    
+    // eslint-disable-next-line no-console
+    console.log('[Login] Username normalizado:', cleanUsername);
+    // eslint-disable-next-line no-console
+    console.log('[Login] Email a verificar:', userEmail);
+
+    // PASO 1: Verificar que el email está en la lista de empleados con acceso
+    // eslint-disable-next-line no-console
+    console.log('[Login] Verificando acceso del empleado...');
+    const empleado = await findEmpleadoByEmail(userEmail);
+    
+    if (!empleado) {
+      // eslint-disable-next-line no-console
+      console.log('[Login] Empleado no encontrado o sin acceso:', userEmail);
+      return res.status(403).json({
+        success: false,
+        error: 'No tienes acceso al portal. Contacta con el administrador si crees que esto es un error.',
+      });
+    }
+    
+    // eslint-disable-next-line no-console
+    console.log('[Login] Empleado verificado:', {
+      IdEmpleado: empleado.IdEmpleado,
+      Email: empleado.Email,
+      accesototal: empleado.accesototal,
+      accesoLimitado: empleado.accesoLimitado,
+    });
+
     // Autenticar contra LDAP
     // eslint-disable-next-line no-console
     console.log('[Login] Autenticando usuario...');
@@ -414,13 +739,13 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
     
-    const user = await authenticateUser(username, password);
+    const user = await authenticateUser(cleanUsername, password);
     // eslint-disable-next-line no-console
     console.log('[Login] Usuario autenticado:', user.username);
 
-    // Verificar si el usuario tiene 2FA habilitado
-    const has2FA = is2FAEnabled(username);
-    const hasStoredSecret = hasSecret(username);
+    // Verificar si el usuario tiene 2FA habilitado (usar username normalizado)
+    const has2FA = is2FAEnabled(cleanUsername);
+    const hasStoredSecret = hasSecret(cleanUsername);
     // eslint-disable-next-line no-console
     console.log('[Login] Usuario tiene 2FA habilitado:', has2FA, 'Tiene secreto guardado:', hasStoredSecret);
     
@@ -459,7 +784,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Si tiene código, verificar el código 2FA
     if (twoFactorCode) {
-      const userSecret = getSecret(username);
+      const userSecret = getSecret(cleanUsername);
       if (!userSecret || !verifyToken(userSecret.secret, twoFactorCode)) {
         return res.status(401).json({
           success: false,
@@ -470,18 +795,21 @@ app.post('/api/auth/login', async (req, res) => {
       // Si el código es válido pero 2FA no estaba habilitado, habilitarlo ahora
       if (!has2FA) {
         // eslint-disable-next-line no-console
-        console.log('[Login] Código válido, habilitando 2FA para usuario:', username);
-        await enable2FA(username);
+        console.log('[Login] Código válido, habilitando 2FA para usuario:', cleanUsername);
+        await enable2FA(cleanUsername);
       }
     }
 
-    // Generar token JWT
+    // Generar token JWT (incluir IdEmpleado y tipo de acceso)
     const jwtSecret = process.env.JWT_SECRET || 'tu_secreto_jwt_super_seguro_cambiar_en_produccion';
     const token = jwt.sign(
       { 
         username: user.username,
-        email: user.email,
+        email: user.email || userEmail,
         displayName: user.displayName,
+        idEmpleado: empleado.IdEmpleado,
+        accesototal: empleado.accesototal,
+        accesoLimitado: empleado.accesoLimitado,
       },
       jwtSecret,
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
@@ -494,35 +822,119 @@ app.post('/api/auth/login', async (req, res) => {
       token,
       user: {
         username: user.username,
-        email: user.email,
+        email: user.email || userEmail,
         name: user.displayName || user.username,
+        idEmpleado: empleado.IdEmpleado,
+        accesototal: empleado.accesototal,
+        accesoLimitado: empleado.accesoLimitado,
+        // Incluir todos los datos del empleado por si hay campos adicionales
+        empleado: empleado,
       },
     });
     // eslint-disable-next-line no-console
     console.log('[Login] Respuesta enviada');
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('[LDAP Auth] Error:', error.message);
+    console.error('[Login] Error completo:', error);
     // eslint-disable-next-line no-console
-    console.error('[LDAP Auth] Stack:', error.stack);
+    console.error('[Login] Error message:', error.message);
     // eslint-disable-next-line no-console
-    console.error('[LDAP Auth] Error completo:', error);
+    console.error('[Login] Error stack:', error.stack);
     
-    // Errores de autenticación
-    if (error.message && (error.message.includes('Credenciales inválidas') || 
-        error.message.includes('Usuario no encontrado'))) {
+    // Si es modo LDAP (no mock), incluir detalles técnicos para el equipo de backend
+    const isLdapMode = !useMockAuth;
+    const errorDetails = {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    };
+    
+    // Agregar información de configuración LDAP si está en modo LDAP
+    if (isLdapMode) {
+      errorDetails.ldapConfig = {
+        ldapUrl: process.env.LDAP_URL ? 'Configurado' : 'No configurado',
+        baseDN: process.env.LDAP_BASE_DN ? 'Configurado' : 'No configurado',
+        adminDN: process.env.LDAP_ADMIN_DN ? 'Configurado' : 'No configurado',
+        hasAdminPassword: !!process.env.LDAP_ADMIN_PASSWORD,
+      };
+      
+      // Si hay un error específico de LDAP, agregar más detalles
+      if (error.code) {
+        errorDetails.ldapErrorCode = error.code;
+      }
+      if (error.dn) {
+        errorDetails.attemptedDN = error.dn;
+      }
+    }
+    
+    // Errores de autenticación (credenciales inválidas)
+    if (error.message && (
+      error.message.includes('Credenciales inválidas') || 
+      error.message.includes('Usuario no encontrado') ||
+      error.message.includes('InvalidCredentialsError') ||
+      error.code === 49
+    )) {
       return res.status(401).json({
         success: false,
         error: 'Credenciales inválidas',
+        ...(isLdapMode && { 
+          details: errorDetails,
+          // Información para el equipo de backend
+          backendInfo: {
+            errorType: 'LDAP Authentication Error',
+            ldapErrorCode: error.code,
+            ldapErrorMessage: error.message,
+            attemptedUsername: cleanUsername,
+            attemptedEmail: userEmail,
+            ldapConfig: errorDetails.ldapConfig,
+          }
+        }),
       });
     }
 
-    // Otros errores
-    res.status(500).json({
+    // Errores de conexión LDAP
+    if (isLdapMode && (
+      error.message.includes('ECONNREFUSED') ||
+      error.message.includes('ETIMEDOUT') ||
+      error.message.includes('ENOTFOUND') ||
+      error.message.includes('getaddrinfo') ||
+      error.message.includes('Error de autenticación admin LDAP') ||
+      error.message.includes('Error de búsqueda LDAP')
+    )) {
+      return res.status(503).json({
+        success: false,
+        error: 'Error de conexión con el servidor de autenticación',
+        details: errorDetails,
+        backendInfo: {
+          errorType: 'LDAP Connection Error',
+          ldapErrorCode: error.code,
+          ldapErrorMessage: error.message,
+          ldapUrl: process.env.LDAP_URL,
+          suggestion: 'Verificar que el servidor LDAP esté accesible, la URL sea correcta, y que estés conectado a la VPN si es necesario',
+        },
+      });
+    }
+
+    // Otros errores - devolver información detallada para debugging
+    const statusCode = isLdapMode ? 500 : 500;
+    res.status(statusCode).json({
       success: false,
       error: 'Error al autenticar usuario',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      details: errorDetails,
+      ...(isLdapMode && {
+        backendInfo: {
+          errorType: 'LDAP General Error',
+          ldapErrorCode: error.code,
+          ldapErrorMessage: error.message,
+          attemptedUsername: cleanUsername,
+          attemptedEmail: userEmail,
+          ldapConfig: errorDetails.ldapConfig,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        }
+      }),
+      ...(process.env.NODE_ENV === 'development' && {
+        stack: error.stack,
+      }),
     });
   }
 });
@@ -637,14 +1049,28 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
       });
     }
 
+    // Normalizar username igual que en el login
+    // Si viene como email, extraer la parte antes del @
+    let cleanUsername = String(username).trim().toLowerCase();
+    if (cleanUsername.includes('@')) {
+      cleanUsername = cleanUsername.split('@')[0];
+      // eslint-disable-next-line no-console
+      console.log('[2FA Setup] Username viene como email, extrayendo:', cleanUsername);
+    }
+    
+    // eslint-disable-next-line no-console
+    console.log('[2FA Setup] Username normalizado:', cleanUsername);
+
     // Si se proporciona password, validar credenciales LDAP primero
     // Esto permite configurar 2FA antes del primer login
     if (password) {
       try {
-        const user = await authenticateUser(username, password);
+        const user = await authenticateUser(cleanUsername, password);
         // eslint-disable-next-line no-console
         console.log('[2FA Setup] Credenciales LDAP validadas para:', user.username);
       } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[2FA Setup] Error autenticando:', error.message);
         return res.status(401).json({
           success: false,
           error: 'Credenciales inválidas. Debes proporcionar usuario y contraseña correctos para configurar 2FA.',
@@ -652,8 +1078,8 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
       }
     }
 
-    // Verificar si ya tiene 2FA habilitado o tiene un secreto guardado
-    if (is2FAEnabled(username)) {
+    // Verificar si ya tiene 2FA habilitado o tiene un secreto guardado (usar username normalizado)
+    if (is2FAEnabled(cleanUsername)) {
       return res.status(400).json({
         success: false,
         error: '2FA ya está configurado para este usuario. Si ya escaneaste el QR, simplemente ingresa el código de 6 dígitos de tu aplicación de autenticación.',
@@ -661,18 +1087,18 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
     }
     
     // Si tiene un secreto guardado pero no está habilitado, sugerir usar el código existente
-    if (hasSecret(username)) {
+    if (hasSecret(cleanUsername)) {
       return res.status(400).json({
         success: false,
         error: 'Ya tienes un código 2FA configurado. Por favor, ingresa el código de 6 dígitos de tu aplicación de autenticación. Si no tienes acceso, contacta al administrador.',
       });
     }
 
-    // Generar secreto
-    const { secret, otpauth_url } = generateSecret(username);
+    // Generar secreto (usar username normalizado)
+    const { secret, otpauth_url } = generateSecret(cleanUsername);
     
-    // Guardar secreto (aún no habilitado)
-    await saveSecret(username, secret);
+    // Guardar secreto (aún no habilitado, usar username normalizado)
+    await saveSecret(cleanUsername, secret);
 
     // Generar QR code
     const qrCode = await generateQRCode(otpauth_url);
@@ -710,7 +1136,19 @@ app.post('/api/auth/2fa/verify', async (req, res) => {
       });
     }
 
-    const userSecret = getSecret(username);
+    // Normalizar username igual que en el login
+    // Si viene como email, extraer la parte antes del @
+    let cleanUsername = String(username).trim().toLowerCase();
+    if (cleanUsername.includes('@')) {
+      cleanUsername = cleanUsername.split('@')[0];
+      // eslint-disable-next-line no-console
+      console.log('[2FA Verify] Username viene como email, extrayendo:', cleanUsername);
+    }
+    
+    // eslint-disable-next-line no-console
+    console.log('[2FA Verify] Username normalizado:', cleanUsername);
+
+    const userSecret = getSecret(cleanUsername);
     if (!userSecret) {
       return res.status(404).json({
         success: false,
@@ -726,8 +1164,8 @@ app.post('/api/auth/2fa/verify', async (req, res) => {
       });
     }
 
-    // Habilitar 2FA
-    await enable2FA(username);
+    // Habilitar 2FA (usar username normalizado)
+    await enable2FA(cleanUsername);
 
     res.json({
       success: true,

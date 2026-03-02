@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../hooks';
 import './Header.css';
+import urovesaLogo from '../../assets/urovesa.png';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -28,7 +29,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, isSidebarOpen }) => {
           )}
         </button>
         <div className="header-logo">
-          <img src="/src/assets/urovesa.png" alt="UROVESA" width="32" height="32" />
+          <img src={urovesaLogo} alt="UROVESA" width="32" height="32" />
         </div>
       </div>
       

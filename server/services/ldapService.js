@@ -142,6 +142,17 @@ export async function authenticateUser(username, password) {
   }
 
   return new Promise((resolve, reject) => {
+    // Manejar errores de conexión antes del bind
+    client.on('error', (err) => {
+      // eslint-disable-next-line no-console
+      console.error('[LDAP] Error de conexión:', err.message);
+      client.unbind();
+      if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+        return reject(new Error(`Error de conexión LDAP: No se puede conectar al servidor ${process.env.LDAP_URL || 'LDAP'}. Verifica la URL y la conectividad de red.`));
+      }
+      return reject(new Error(`Error de conexión LDAP: ${err.message}`));
+    });
+    
     client.bind(userDN, password, (err) => {
       client.unbind();
       

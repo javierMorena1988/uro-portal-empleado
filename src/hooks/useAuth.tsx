@@ -5,6 +5,14 @@ interface User {
   email: string;
   name: string;
   username?: string;
+  idEmpleado?: string | number;
+  accesototal?: boolean;
+  accesoLimitado?: boolean;
+  empleado?: {
+    IdEmpleado?: string | number;
+    Email?: string;
+    [key: string]: unknown; // Para campos adicionales que pueda tener el empleado
+  };
 }
 
 interface AuthContextType {
@@ -43,6 +51,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               email: response.user.email,
               name: response.user.displayName || response.user.username,
               username: response.user.username,
+              idEmpleado: response.user.idEmpleado,
+              accesototal: response.user.accesototal,
+              accesoLimitado: response.user.accesoLimitado,
+              empleado: response.user.empleado || undefined,
             };
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
@@ -89,6 +101,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email: response.user.email,
           name: response.user.name,
           username: response.user.username,
+          idEmpleado: response.user.idEmpleado,
+          accesototal: response.user.accesototal,
+          accesoLimitado: response.user.accesoLimitado,
+          empleado: response.user.empleado,
         };
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));

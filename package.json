@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:dev": "cross-env BASE_PATH=/PortalEmpleado/ tsc -b && vite build",
+    "build:empleado": "cross-env BASE_PATH=/Empleado/ tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.js",
     "dev:server": "nodemon server/index.js",
     "dev:all": "concurrently \"npm:dev\" \"npm:dev:server\"",
-    "test:ldap": "node scripts/test-ldap.js"
+    "test:ldap": "node scripts/test-ldap.js",
+    "prepare:deploy": "node scripts/prepare-deployment.js",
+    "deploy": "npm run build && npm run prepare:deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

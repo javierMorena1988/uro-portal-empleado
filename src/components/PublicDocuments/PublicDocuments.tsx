@@ -1,22 +1,275 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MESSAGES, DOCUMENT_CATEGORIES, DOCUMENT_ACTIONS } from "../../constants";
+import { getPublicDocuments, getDictionaryInfo } from "../../services/therefore";
+import { useAuth } from "../../hooks/useAuth";
 import "./PublicDocuments.css";
 
 interface Document {
   id: string;
   title: string;
-  category: typeof DOCUMENT_CATEGORIES[keyof typeof DOCUMENT_CATEGORIES];
+  category: typeof DOCUMENT_CATEGORIES[keyof typeof DOCUMENT_CATEGORIES] | string;
   date: string;
   size: string;
+  DocNo?: number;
+  tipoDocumento?: string | null;
+  tipoDocumentoId?: number | null;
 }
 
 const PublicDocuments: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<
-    "Todos" | typeof DOCUMENT_CATEGORIES[keyof typeof DOCUMENT_CATEGORIES]
+    "Todos" | typeof DOCUMENT_CATEGORIES[keyof typeof DOCUMENT_CATEGORIES] | string
   >("Todos");
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [rawDocuments, setRawDocuments] = useState<any[]>([]); // Guardar documentos sin transformar
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [documentTypes, setDocumentTypes] = useState<Record<number, string>>({});
+  const [dictionaryId, setDictionaryId] = useState<number | null>(null);
+  const { user } = useAuth();
 
-  // Datos mock de documentos públicos
-  const documents: Document[] = [
+  // Cargar tipos de documento desde Therefore cuando tengamos el dictionaryId
+  useEffect(() => {
+    const loadDocumentTypes = async () => {
+      if (!dictionaryId) {
+        // eslint-disable-next-line no-console
+        console.log('[PublicDocuments] ⏳ Esperando dictionaryId... (actual:', dictionaryId, ')');
+        return; // Esperar a tener el dictionaryId
+      }
+      
+      // eslint-disable-next-line no-console
+      console.log('[PublicDocuments] 🚀 INICIANDO carga de diccionario con ID:', dictionaryId);
+      
+      try {
+        const dictResponse = await getDictionaryInfo(dictionaryId);
+        // eslint-disable-next-line no-console
+        console.log('[PublicDocuments] ✅ Respuesta de getDictionaryInfo:', JSON.stringify(dictResponse, null, 2));
+        
+        if (dictResponse.success && dictResponse.data) {
+          const types: Record<number, string> = {};
+          
+          // La estructura es: data.Dictionary.Items[]
+          // Cada item tiene: { ID: number, Name: string, ... }
+          if (dictResponse.data && typeof dictResponse.data === 'object') {
+            const dictionary = (dictResponse.data as any).Dictionary;
+            
+            if (dictionary && dictionary.Items && Array.isArray(dictionary.Items)) {
+              // eslint-disable-next-line no-console
+              console.log('[PublicDocuments] Procesando Items del diccionario:', dictionary.Items.length);
+              
+              dictionary.Items.forEach((item: any) => {
+                if (item.ID !== undefined && item.Name) {
+                  types[item.ID] = item.Name;
+                  // eslint-disable-next-line no-console
+                  console.log(`[PublicDocuments] Tipo ${item.ID} -> "${item.Name}"`);
+                }
+              });
+            } else {
+              // eslint-disable-next-line no-console
+              console.error('[PublicDocuments] No se encontró Dictionary.Items en la respuesta');
+              // eslint-disable-next-line no-console
+              console.log('[PublicDocuments] Estructura de data:', Object.keys(dictResponse.data || {}));
+            }
+          }
+          
+          // eslint-disable-next-line no-console
+          console.log('[PublicDocuments] ✅ Tipos de documento cargados:', types);
+          setDocumentTypes(types);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error('[PublicDocuments] ❌ getDictionaryInfo no devolvió success o data. Response:', dictResponse);
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[PublicDocuments] ❌ Error al cargar tipos de documento:', err);
+        // No es crítico, continuar sin los tipos
+      }
+    };
+    
+    loadDocumentTypes();
+  }, [dictionaryId]);
+
+  // Transformar documentos cuando tengamos los documentos (no esperar a tipos si ya hay documentos)
+  useEffect(() => {
+    if (rawDocuments.length === 0) {
+      // eslint-disable-next-line no-console
+      console.log('[PublicDocuments] Esperando documentos...');
+      return; // Esperar a tener documentos
+    }
+    
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] ✅ Transformando documentos. Tipos cargados:', Object.keys(documentTypes).length > 0 ? 'Sí' : 'No (usando fallback)');
+    
+    // Transformar los documentos de Therefore al formato esperado
+    // La estructura es: { DocNo, IndexValues: [nombreDocumento, tipoDocumentoId], Size, VersionNo }
+    // tipoDocumentoId es un número que debemos usar para obtener la descripción del diccionario
+    const transformedDocs: Document[] = rawDocuments.map((doc: any, index: number) => {
+      // eslint-disable-next-line no-console
+      console.log(`[PublicDocuments] Procesando documento ${index}:`, doc);
+      
+      // El nombre del documento está en IndexValues[0]
+      const nombreDocumento = doc.IndexValues && doc.IndexValues.length > 0 
+        ? doc.IndexValues[0] 
+        : `Documento ${index + 1}`;
+      
+      // El tipo de documento está en IndexValues[1] (ID numérico)
+      const tipoDocumentoId = doc.IndexValues && doc.IndexValues.length > 1 
+        ? Number(doc.IndexValues[1]) 
+        : null;
+      
+      // Obtener la descripción del tipo desde el diccionario usando el ID
+      const tipoDocumentoDesc = tipoDocumentoId && documentTypes[tipoDocumentoId] 
+        ? documentTypes[tipoDocumentoId] 
+        : null;
+      
+      // eslint-disable-next-line no-console
+      console.log(`[PublicDocuments] Tipo ID ${tipoDocumentoId} -> Descripción: ${tipoDocumentoDesc}`);
+      
+      // Usar la descripción del tipo como categoría (no hardcoded)
+      // Si no hay descripción, usar un fallback temporal
+      const category = tipoDocumentoDesc || `Tipo ${tipoDocumentoId || 'Desconocido'}`;
+      
+      // Formatear el tamaño (Size está en bytes)
+      const sizeInBytes = doc.Size || 0;
+      const formatSize = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+      };
+      
+      return {
+        id: String(doc.DocNo || index + 1),
+        title: nombreDocumento,
+        category: category, // Usar descripción real del diccionario (no hardcoded)
+        date: new Date().toLocaleDateString('es-ES'), // Therefore no devuelve fecha en esta consulta
+        size: formatSize(sizeInBytes),
+        DocNo: doc.DocNo,
+        VersionNo: doc.VersionNo,
+        tipoDocumento: tipoDocumentoDesc, // Guardar la descripción del tipo
+        tipoDocumentoId: tipoDocumentoId, // Guardar también el ID
+      };
+    });
+    
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] Documentos transformados:', transformedDocs);
+    setDocuments(transformedDocs);
+  }, [rawDocuments, documentTypes]);
+
+  // Cargar documentos públicos desde Therefore
+  useEffect(() => {
+    const loadDocuments = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Obtener idEmpleado del usuario autenticado
+        if (!user || !user.idEmpleado) {
+          setError('No se pudo obtener el ID del empleado. Por favor, inicia sesión nuevamente.');
+          setLoading(false);
+          return;
+        }
+        
+        const idEmpleado = user.idEmpleado;
+        
+        const response = await getPublicDocuments(idEmpleado);
+        
+        // eslint-disable-next-line no-console
+        console.log('[PublicDocuments] Respuesta completa del backend:', JSON.stringify(response, null, 2));
+        
+        if (response.success) {
+          // Si hay información de debug, mostrarla
+          if ((response as any).debug) {
+            // eslint-disable-next-line no-console
+            console.log('[PublicDocuments] Debug info:', (response as any).debug);
+          }
+          
+          // Extraer el ID del diccionario de la respuesta
+          // Buscar en Columns el campo tipoDocumento y extraer el número del TypeTableName
+          if ((response as any).debug && (response as any).debug.rawResponse) {
+            const rawResponse = (response as any).debug.rawResponse;
+            // eslint-disable-next-line no-console
+            console.log('[PublicDocuments] 🔍 Buscando dictionaryId en rawResponse...');
+            
+            if (rawResponse.QueryResult && rawResponse.QueryResult.Columns) {
+              // eslint-disable-next-line no-console
+              console.log('[PublicDocuments] ✅ Columns encontradas:', rawResponse.QueryResult.Columns.length);
+              
+              const tipoDocumentoColumn = rawResponse.QueryResult.Columns.find(
+                (col: any) => col.ColName === 'tipoDocumento' || col.FieldID === 'tipoDocumento'
+              );
+              
+              // eslint-disable-next-line no-console
+              console.log('[PublicDocuments] Columna tipoDocumento:', tipoDocumentoColumn ? '✅ encontrada' : '❌ no encontrada');
+              
+              if (tipoDocumentoColumn) {
+                // eslint-disable-next-line no-console
+                console.log('[PublicDocuments] TypeTableName:', tipoDocumentoColumn.TypeTableName);
+                
+                if (tipoDocumentoColumn.TypeTableName) {
+                  // Extraer el número de "TheKeywords19" -> 19
+                  const match = tipoDocumentoColumn.TypeTableName.match(/TheKeywords(\d+)/);
+                  
+                  if (match && match[1]) {
+                    const extractedId = Number(match[1]);
+                    // eslint-disable-next-line no-console
+                    console.log('[PublicDocuments] ✅ ID del diccionario extraído:', extractedId, 'de TypeTableName:', tipoDocumentoColumn.TypeTableName);
+                    setDictionaryId(extractedId);
+                  } else {
+                    // eslint-disable-next-line no-console
+                    console.error('[PublicDocuments] ❌ No se pudo extraer el ID del diccionario de:', tipoDocumentoColumn.TypeTableName);
+                  }
+                } else {
+                  // eslint-disable-next-line no-console
+                  console.error('[PublicDocuments] ❌ TypeTableName está vacío o no existe');
+                }
+              } else {
+                // eslint-disable-next-line no-console
+                console.error('[PublicDocuments] ❌ No se encontró la columna tipoDocumento en Columns');
+                // eslint-disable-next-line no-console
+                console.log('[PublicDocuments] Columnas disponibles:', rawResponse.QueryResult.Columns.map((c: any) => c.ColName || c.FieldID));
+              }
+            } else {
+              // eslint-disable-next-line no-console
+              console.error('[PublicDocuments] ❌ No se encontró QueryResult.Columns en rawResponse');
+              // eslint-disable-next-line no-console
+              console.log('[PublicDocuments] Estructura de rawResponse:', Object.keys(rawResponse || {}));
+            }
+          } else {
+            // eslint-disable-next-line no-console
+            console.error('[PublicDocuments] ❌ No se encontró debug.rawResponse en la respuesta');
+          }
+          
+          if (response.documents && response.documents.length > 0) {
+            // eslint-disable-next-line no-console
+            console.log('[PublicDocuments] Documentos recibidos:', response.documents);
+            
+            // Guardar los documentos sin transformar (esperaremos a que se carguen los tipos)
+            setRawDocuments(response.documents);
+          } else {
+            // No hay documentos pero la respuesta fue exitosa
+            // eslint-disable-next-line no-console
+            console.log('[PublicDocuments] No se encontraron documentos');
+            setDocuments([]);
+          }
+        } else {
+          const errorMsg = response.error || 'Error al cargar documentos';
+          // eslint-disable-next-line no-console
+          console.error('[PublicDocuments] Error:', errorMsg);
+          setError(errorMsg);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error desconocido');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDocuments();
+  }, [user, documentTypes]);
+
+  // Datos mock de documentos públicos (fallback si hay error)
+  const mockDocuments: Document[] = [
     {
       id: "1",
       title: "Manual del empleado 2025",
@@ -61,10 +314,13 @@ const PublicDocuments: React.FC = () => {
     },
   ];
 
+  // Usar documentos reales o mock si hay error
+  const displayDocuments = error && documents.length === 0 ? mockDocuments : documents;
+  
   const filteredDocuments =
     activeFilter === "Todos"
-      ? documents
-      : documents.filter((doc) => doc.category === activeFilter);
+      ? displayDocuments
+      : displayDocuments.filter((doc) => doc.category === activeFilter);
 
   const getDocumentIcon = (category: string) => {
     switch (category) {
@@ -130,14 +386,36 @@ const PublicDocuments: React.FC = () => {
     }
   };
 
-  const handleView = (document: Document) => {
-    console.log("Ver documento:", document);
-    // Aquí implementarías la lógica para ver el documento
+  const handleView = async (document: Document) => {
+    if (document.DocNo) {
+      try {
+        const { viewDocument } = await import("../../services/therefore");
+        const blob = await viewDocument(document.DocNo);
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // Limpiar el URL después de un tiempo
+        setTimeout(() => window.URL.revokeObjectURL(url), 100);
+      } catch (err) {
+        console.error("Error al visualizar documento:", err);
+        alert("Error al visualizar el documento");
+      }
+    } else {
+      console.log("Ver documento:", document);
+    }
   };
 
-  const handleDownload = (document: Document) => {
-    console.log("Descargar documento:", document);
-    // Aquí implementarías la lógica para descargar el documento
+  const handleDownload = async (document: Document) => {
+    if (document.DocNo) {
+      try {
+        const { downloadDocument } = await import("../../services/therefore");
+        await downloadDocument(document.DocNo);
+      } catch (err) {
+        console.error("Error al descargar documento:", err);
+        alert("Error al descargar el documento");
+      }
+    } else {
+      console.log("Descargar documento:", document);
+    }
   };
 
   return (
@@ -156,28 +434,63 @@ const PublicDocuments: React.FC = () => {
         >
           {MESSAGES.DOCUMENTS.PUBLIC.FILTER_ALL}
         </button>
-        <button
-          className={`filter-btn ${
-            activeFilter === DOCUMENT_CATEGORIES.POLITICAS ? "active" : ""
-          }`}
-          onClick={() => setActiveFilter(DOCUMENT_CATEGORIES.POLITICAS)}
-        >
-          {DOCUMENT_CATEGORIES.POLITICAS}
-        </button>
-        <button
-          className={`filter-btn ${
-            activeFilter === DOCUMENT_CATEGORIES.RECURSOS ? "active" : ""
-          }`}
-          onClick={() => setActiveFilter(DOCUMENT_CATEGORIES.RECURSOS)}
-        >
-          {DOCUMENT_CATEGORIES.RECURSOS}
-        </button>
+        {/* Generar filtros dinámicamente basados en los tipos de documento únicos */}
+        {Array.from(new Set(documents.map(doc => doc.tipoDocumento || doc.category).filter(Boolean))).map((category) => (
+          <button
+            key={category}
+            className={`filter-btn ${activeFilter === category ? "active" : ""}`}
+            onClick={() => setActiveFilter(category)}
+          >
+            {category}
+          </button>
+        ))}
+        {/* Mantener filtros hardcoded como fallback si no hay tipos dinámicos */}
+        {documents.length === 0 && (
+          <>
+            <button
+              className={`filter-btn ${
+                activeFilter === DOCUMENT_CATEGORIES.POLITICAS ? "active" : ""
+              }`}
+              onClick={() => setActiveFilter(DOCUMENT_CATEGORIES.POLITICAS)}
+            >
+              {DOCUMENT_CATEGORIES.POLITICAS}
+            </button>
+            <button
+              className={`filter-btn ${
+                activeFilter === DOCUMENT_CATEGORIES.RECURSOS ? "active" : ""
+              }`}
+              onClick={() => setActiveFilter(DOCUMENT_CATEGORIES.RECURSOS)}
+            >
+              {DOCUMENT_CATEGORIES.RECURSOS}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="public-documents-content">
+        {/* Mensaje de error */}
+        {error && (
+          <div style={{ padding: '1rem', background: '#fee', color: '#c33', borderRadius: '4px', marginBottom: '1rem' }}>
+            Error: {error}
+          </div>
+        )}
+        
+        {/* Loading */}
+        {loading && (
+          <div style={{ padding: '2rem', textAlign: 'center' }}>
+            Cargando documentos...
+          </div>
+        )}
+        
         {/* Lista de documentos */}
-        <div className="public-documents-list">
-          {filteredDocuments.map((document) => (
+        {!loading && (
+          <div className="public-documents-list">
+            {filteredDocuments.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
+                No se encontraron documentos públicos
+              </div>
+            ) : (
+              filteredDocuments.map((document) => (
             <div key={document.id} className="public-document-item">
               <div className="public-document-item-header">
                 <div className="public-document-item-icon">
@@ -239,8 +552,10 @@ const PublicDocuments: React.FC = () => {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Sección de ayuda */}
         <div className="help-section">

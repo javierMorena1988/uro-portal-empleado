@@ -1,0 +1,39 @@
+# Configuración Apache para Portal Empleado (RUTA /Empleado/)
+# Este archivo debe estar en la carpeta /Empleado/ después de subir por FTP
+# La app corre desde: https://portalempleado.urovesa.com/Empleado/login
+
+# Habilitar rewrite engine
+RewriteEngine On
+RewriteBase /Empleado/
+
+# Proxy para API del backend Node.js
+# NOTA: Esto requiere que mod_proxy esté habilitado en Apache
+# Si no funciona, configura el proxy en el Virtual Host de Apache
+RewriteCond %{REQUEST_URI} ^/Empleado/api/(.*)$
+RewriteRule ^api/(.*)$ http://localhost:5174/api/$1 [P,L]
+
+# Si el archivo o directorio existe, servirlo directamente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Si no existe, redirigir a index.html (para React Router)
+RewriteRule ^ index.html [L]
+
+# Headers para CORS (si es necesario)
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
+</IfModule>
+
+# Configuración de caché para archivos estáticos
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>

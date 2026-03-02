@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../hooks';
 import './Sidebar.css';
+import urovesaLogo from '../../assets/urovesa.png';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewChange }) => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const menuItems = [
     { 
       id: 'dashboard', 
@@ -44,17 +45,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewCh
         </svg>
       )
     },
-    { 
-      id: 'private-docs', 
-      label: 'Documentos privados', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <circle cx="12" cy="16" r="1"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-      )
-    },
+    // Documentos privados oculto temporalmente
+    // { 
+    //   id: 'private-docs', 
+    //   label: 'Documentos privados', 
+    //   icon: (
+    //     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    //       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    //       <circle cx="12" cy="16" r="1"/>
+    //       <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    //     </svg>
+    //   )
+    // },
   ];
 
   const handleItemClick = (itemId: string) => {
@@ -71,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewCh
         <div className="sidebar-header">
           <div className="logo">
             <div className="logo-icon">
-              <img src="/src/assets/urovesa.png" alt="UROVESA" width="40" height="40" />
+              <img src={urovesaLogo} alt="UROVESA" width="40" height="40" />
             </div>
           </div>
         </div>
@@ -83,11 +85,37 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewCh
               <circle cx="12" cy="7" r="4"/>
             </svg>
           </div>
-          <div className="user-name-mobile">Beatriz Rodríguez Donsión</div>
+          <div className="user-name-mobile">
+            {(() => {
+              const emp = user?.empleado;
+              if (!emp) return user?.name || 'Usuario';
+              if (typeof emp === 'string') return emp;
+              const nombre = (emp as Record<string, unknown>)?.EMPLEADO || 
+                           (emp as Record<string, unknown>)?.empleado || 
+                           (emp as Record<string, unknown>)?.nombreEmpleado || 
+                           (emp as Record<string, unknown>)?.NombreEmpleado;
+              if (typeof nombre === 'string') return nombre;
+              if (typeof nombre === 'number') return String(nombre);
+              return user?.name || 'Usuario';
+            })()}
+          </div>
         </div>
         
         <div className="user-info">
-          <div className="user-name">Beatriz Rodríguez Donsión</div>
+          <div className="user-name">
+            {(() => {
+              const emp = user?.empleado;
+              if (!emp) return user?.name || 'Usuario';
+              if (typeof emp === 'string') return emp;
+              const nombre = (emp as Record<string, unknown>)?.EMPLEADO || 
+                           (emp as Record<string, unknown>)?.empleado || 
+                           (emp as Record<string, unknown>)?.nombreEmpleado || 
+                           (emp as Record<string, unknown>)?.NombreEmpleado;
+              if (typeof nombre === 'string') return nombre;
+              if (typeof nombre === 'number') return String(nombre);
+              return user?.name || 'Usuario';
+            })()}
+          </div>
         </div>
         
         <nav className="sidebar-nav">

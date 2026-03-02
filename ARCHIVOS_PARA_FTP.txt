@@ -1,0 +1,106 @@
+═══════════════════════════════════════════════════════════════════════════════
+  LISTA DE ARCHIVOS PARA SUBIR POR FTP - PORTAL EMPLEADO
+═══════════════════════════════════════════════════════════════════════════════
+
+📍 URL DE PRODUCCIÓN: https://portalempleado.urovesa.com/Empleado/
+
+═══════════════════════════════════════════════════════════════════════════════
+  🎨 FRONTEND - Subir a: /Empleado/
+═══════════════════════════════════════════════════════════════════════════════
+
+Desde la carpeta local: dist/
+Subir TODO el contenido de dist/ a /Empleado/ en el servidor
+
+✅ Archivos a subir:
+   📄 dist/index.html              → /Empleado/index.html
+   📄 dist/.htaccess                → /Empleado/.htaccess (IMPORTANTE!)
+   📄 dist/favicon.ico              → /Empleado/favicon.ico
+   📄 dist/vite.svg                 → /Empleado/vite.svg
+   📁 dist/assets/                  → /Empleado/assets/ (carpeta completa)
+      ├── index-XXXXX.css
+      └── index-XXXXX.js
+
+═══════════════════════════════════════════════════════════════════════════════
+  ⚙️ BACKEND - Subir a: /portal-empleado-backend/ (o la ruta que uses)
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Archivos a subir:
+   📁 server/                       → /portal-empleado-backend/server/
+      ├── index.js
+      └── services/
+          ├── ldapService.js
+          ├── mockAuthService.js
+          ├── twoFactorService.js
+          └── twoFactorStorage.js
+   
+   📄 package.json                  → /portal-empleado-backend/package.json
+   📄 package-lock.json             → /portal-empleado-backend/package-lock.json
+
+═══════════════════════════════════════════════════════════════════════════════
+  ❌ NO SUBIR (se crean/configuran en el servidor)
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ node_modules/        → Se instala con: npm install --production
+❌ .env                → Se crea manualmente en el servidor (contiene credenciales)
+❌ src/                → No necesario, ya está compilado en dist/
+❌ docs/               → Documentación, no necesario en producción
+❌ scripts/            → Scripts de desarrollo, no necesario
+❌ data/               → Se crea automáticamente en el servidor
+
+═══════════════════════════════════════════════════════════════════════════════
+  📋 DESPUÉS DE SUBIR POR FTP - CONFIGURACIÓN EN SERVIDOR (SSH)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Conectarse por SSH:
+   ssh usuario@servidor.com
+
+2. Ir al directorio del backend:
+   cd /var/www/portal-empleado-backend
+
+3. Instalar dependencias:
+   npm install --production
+
+4. Crear archivo .env (NO subir por FTP):
+   nano .env
+   
+   Contenido mínimo:
+   PORT=5174
+   NODE_ENV=production
+   MOCK_AUTH=false
+   JWT_SECRET=tu_secreto_super_seguro
+   THEREFORE_BASE_URL=https://therefore.urovesa.com:443/theservice/v0001/restun
+   THEREFORE_USERNAME=tu_usuario
+   THEREFORE_PASSWORD=tu_contraseña
+   ... (ver docs/GUIA_DESPLIEGUE_FTP.md para lista completa)
+
+5. Crear carpeta data/:
+   mkdir -p data
+   chmod 755 data
+
+6. Iniciar backend con PM2:
+   npm install -g pm2
+   pm2 start server/index.js --name portal-empleado
+   pm2 startup
+   pm2 save
+
+7. Verificar que está corriendo:
+   pm2 list
+   pm2 logs portal-empleado
+
+═══════════════════════════════════════════════════════════════════════════════
+  ✅ VERIFICACIÓN FINAL
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Frontend carga en: https://portalempleado.urovesa.com/Empleado/
+□ No hay errores en consola del navegador
+□ Backend está corriendo: pm2 list (debe mostrar "online")
+□ Las llamadas a /Empleado/api/ funcionan
+□ Login funciona con usuarios reales
+
+═══════════════════════════════════════════════════════════════════════════════
+  📚 DOCUMENTACIÓN COMPLETA
+═══════════════════════════════════════════════════════════════════════════════
+
+Ver: docs/GUIA_DESPLIEGUE_FTP.md para guía detallada con troubleshooting
+
+═══════════════════════════════════════════════════════════════════════════════

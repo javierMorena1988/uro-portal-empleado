@@ -2,6 +2,8 @@
  * Servicio de autenticación para comunicación con el backend LDAP
  */
 
+import { API_BASE_URL } from '../config/api';
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -14,6 +16,14 @@ export interface LoginResponse {
     username: string;
     email: string;
     name: string;
+    idEmpleado?: string | number;
+    accesototal?: boolean;
+    accesoLimitado?: boolean;
+    empleado?: {
+      IdEmpleado?: string | number;
+      Email?: string;
+      [key: string]: unknown; // Para campos adicionales del empleado
+    };
   };
   requiresTwoFactor?: boolean;
   requires2FASetup?: boolean;
@@ -39,6 +49,14 @@ export interface VerifyTokenResponse {
     username: string;
     email: string;
     displayName: string;
+    idEmpleado?: string | number;
+    accesototal?: boolean;
+    accesoLimitado?: boolean;
+    empleado?: {
+      IdEmpleado?: string | number;
+      Email?: string;
+      [key: string]: unknown; // Para campos adicionales del empleado
+    };
   };
   error?: string;
 }
@@ -56,7 +74,7 @@ export async function login(
   twoFactorCode?: string
 ): Promise<LoginResponse> {
   try {
-    const response = await fetch('/api/auth/login', {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -102,7 +120,7 @@ export async function changePassword(
   newPassword: string
 ): Promise<ChangePasswordResponse> {
   try {
-    const response = await fetch('/api/auth/change-password', {
+    const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -136,7 +154,7 @@ export async function changePassword(
  */
 export async function verifyToken(token: string): Promise<VerifyTokenResponse> {
   try {
-    const response = await fetch('/api/auth/verify', {
+    const response = await fetch(`${API_BASE_URL}/auth/verify`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -213,7 +231,7 @@ export interface TwoFactorStatusResponse {
  */
 export async function setup2FA(username: string, password?: string): Promise<Setup2FAResponse> {
   try {
-    const response = await fetch('/api/auth/2fa/setup', {
+    const response = await fetch(`${API_BASE_URL}/auth/2fa/setup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -248,7 +266,7 @@ export async function setup2FA(username: string, password?: string): Promise<Set
  */
 export async function verify2FA(username: string, code: string): Promise<Verify2FAResponse> {
   try {
-    const response = await fetch('/api/auth/2fa/verify', {
+    const response = await fetch(`${API_BASE_URL}/auth/2fa/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -282,7 +300,7 @@ export async function verify2FA(username: string, code: string): Promise<Verify2
  */
 export async function get2FAStatus(username: string): Promise<TwoFactorStatusResponse> {
   try {
-    const response = await fetch(`/api/auth/2fa/status?username=${encodeURIComponent(username)}`, {
+    const response = await fetch(`${API_BASE_URL}/auth/2fa/status?username=${encodeURIComponent(username)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

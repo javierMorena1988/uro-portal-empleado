@@ -1,14 +1,72 @@
+import { API_BASE_URL } from '../config/api';
+
 export type ExecuteSingleQueryRequest = Record<string, unknown>;
 export type ExecuteSingleQueryResponse = unknown;
 
 export async function executeSingleQuery(payload: ExecuteSingleQueryRequest): Promise<ExecuteSingleQueryResponse> {
-  const resp = await fetch('/api/therefore/executeSingleQuery', {
+  const resp = await fetch(`${API_BASE_URL}/therefore/executeSingleQuery`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!resp.ok) throw new Error(`ExecuteSingleQuery failed: ${resp.status}`);
   return resp.json();
+}
+
+/**
+ * Obtiene documentos públicos para un empleado
+ * @param idEmpleado - ID del empleado
+ * @returns Lista de documentos públicos
+ */
+export interface PublicDocument {
+  DocNo?: number;
+  nombreDocumento?: string;
+  [key: string]: unknown;
+}
+
+export interface PublicDocumentsResponse {
+  success: boolean;
+  documents?: PublicDocument[];
+  error?: string;
+  debug?: {
+    rawResponse?: unknown;
+    responseType?: string;
+    isArray?: boolean;
+    keys?: string[] | null;
+    hasResults?: boolean;
+    hasDocuments?: boolean;
+    hasQuery?: boolean;
+  };
+}
+
+export async function getPublicDocuments(idEmpleado: string | number): Promise<PublicDocumentsResponse> {
+  try {
+    const resp = await fetch(`${API_BASE_URL}/therefore/publicDocuments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idEmpleado: String(idEmpleado) }),
+    });
+    
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({ message: `Error ${resp.status}` }));
+      return {
+        success: false,
+        error: errorData.error || errorData.message || `Error ${resp.status}`,
+      };
+    }
+    
+    const data = await resp.json();
+    return {
+      success: true,
+      documents: data.documents || [],
+      debug: data.debug, // Incluir debug para extraer dictionaryId
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
+  }
 }
 
 export interface GetDocumentRequest {
@@ -25,7 +83,7 @@ export async function getDocument(docNo: number | string, versionNo?: number): P
     requestBody.VersionNo = versionNo;
   }
 
-  const resp = await fetch('/api/therefore/getDocument', {
+  const resp = await fetch(`${API_BASE_URL}/therefore/getDocument`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
@@ -53,7 +111,7 @@ export async function viewDocument(
     requestBody.VersionNo = versionNo;
   }
 
-  const resp = await fetch('/api/therefore/downloadDocument', {
+  const resp = await fetch(`${API_BASE_URL}/therefore/downloadDocument`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
@@ -102,7 +160,7 @@ export async function downloadDocument(
     requestBody.VersionNo = versionNo;
   }
 
-  const resp = await fetch('/api/therefore/downloadDocument', {
+  const resp = await fetch(`${API_BASE_URL}/therefore/downloadDocument`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
@@ -161,11 +219,42 @@ export async function downloadDocument(
   window.URL.revokeObjectURL(url);
 }
 
+/**
+ * Obtiene información del diccionario de Therefore (descripciones de tipos de documento)
+ * @param dictionaryID - ID del diccionario (ej: 19)
+ * @returns Información del diccionario
+ */
+export interface DictionaryInfoResponse {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}
+
+export async function getDictionaryInfo(dictionaryID: number): Promise<DictionaryInfoResponse> {
+  try {
+    const resp = await fetch(`${API_BASE_URL}/therefore/getDictionaryInfo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ByDictionaryID: dictionaryID }),
+    });
+    
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({ message: `Error ${resp.status}` }));
+      throw new Error(errorData.error || errorData.message || `GetDictionaryInfo failed: ${resp.status}`);
+    }
+    
+    return await resp.json();
+  } catch (err) {
+    console.error('[GetDictionaryInfo] Error:', err);
+    throw err;
+  }
+}
+
 export type CreateDocumentRequest = Record<string, unknown>;
 export type CreateDocumentResponse = unknown;
 
 export async function createDocument(payload: CreateDocumentRequest): Promise<CreateDocumentResponse> {
-  const resp = await fetch('/api/therefore/createDocument', {
+  const resp = await fetch(`${API_BASE_URL}/therefore/createDocument`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -188,7 +277,7 @@ export async function testTherefore(docNo: number | string = 1): Promise<{ succe
       DocNo: typeof docNo === 'string' ? parseInt(docNo, 10) : docNo,
     };
     
-    const resp = await fetch('/api/therefore/getDocument', {
+    const resp = await fetch(`${API_BASE_URL}/therefore/getDocument`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),

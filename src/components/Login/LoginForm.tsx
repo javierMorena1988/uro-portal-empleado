@@ -8,6 +8,7 @@ import { MESSAGES } from "../../constants";
 import OtpInput from "react-otp-input";
 import Setup2FA from "./Setup2FA";
 import "./LoginForm.css";
+import urovesaLogo from "../../assets/urovesa.png";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Usuario o email requerido"),
@@ -118,7 +119,7 @@ const LoginForm: React.FC = () => {
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">
-            <img src="/src/assets/urovesa.png" alt="UROVESA" />
+            <img src={urovesaLogo} alt="UROVESA" />
           </div>
           <h1 className="login-title">{MESSAGES.LOGIN.TITLE}</h1>
           <p className="login-subtitle">{MESSAGES.LOGIN.SUBTITLE}</p>

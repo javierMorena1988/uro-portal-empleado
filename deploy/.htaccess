@@ -1,0 +1,70 @@
+# Configuración Apache para Portal Empleado (RUTA /Empleado/)
+# Este archivo debe estar en la carpeta /Empleado/ después de subir por FTP
+# La app corre desde: https://portalempleado.urovesa.com/Empleado/login
+
+# Habilitar rewrite engine
+RewriteEngine On
+RewriteBase /Empleado/
+
+# Deshabilitar listado de directorios
+Options -Indexes
+
+# Proxy para API del backend Node.js
+# NOTA: Esto requiere que mod_proxy y mod_proxy_http estén habilitados en Apache
+# Si no funciona, configura el proxy en el Virtual Host de Apache (recomendado)
+# IMPORTANTE: Esta regla debe ir ANTES de las reglas de archivos estáticos
+RewriteCond %{REQUEST_URI} ^/Empleado/api/(.*)$
+RewriteRule ^api/(.*)$ http://localhost:5174/api/$1 [P,L]
+
+# Alternativa si la regla anterior no funciona (descomentar si es necesario):
+# RewriteCond %{REQUEST_URI} ^/Empleado/api
+# RewriteRule ^(.*)$ http://localhost:5174/api/$1 [P,L]
+
+# IMPORTANTE: Servir archivos estáticos directamente (CSS, JS, imágenes, etc.)
+# Primero verificar si el archivo existe físicamente en el servidor
+# Si existe, servirlo directamente sin rewrite
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Si es un directorio que existe, servirlo directamente
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Si el archivo o directorio NO existe, redirigir a index.html (para React Router)
+# Esto permite que React Router maneje las rutas
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
+
+# Configurar tipos MIME correctos para archivos estáticos
+<IfModule mod_mime.c>
+    AddType text/css .css
+    AddType application/javascript .js
+    AddType application/json .json
+    AddType image/svg+xml .svg
+    AddType image/png .png
+    AddType image/jpeg .jpg .jpeg
+    AddType image/gif .gif
+    AddType image/x-icon .ico
+</IfModule>
+
+# Headers para CORS (si es necesario)
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
+    
+    # NO establecer Content-Type vacío - dejar que mod_mime lo maneje
+</IfModule>
+
+# Configuración de caché para archivos estáticos
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>
