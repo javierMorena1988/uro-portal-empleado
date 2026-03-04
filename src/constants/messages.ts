@@ -23,10 +23,10 @@ export const MESSAGES = {
   
   DOCUMENTS: {
     PUBLIC: {
-      TITLE: 'Documentos públicos',
+      TITLE: 'Documentación Laboral',
       SUBTITLE: 'Políticas y recursos de la empresa',
       FILTER_ALL: 'Todos',
-      NO_DOCUMENTS: 'No hay documentos públicos disponibles',
+      NO_DOCUMENTS: 'No hay documentos disponibles',
       HELP_TITLE: '¿No encuentras lo que buscas?',
     },
     PRIVATE: {

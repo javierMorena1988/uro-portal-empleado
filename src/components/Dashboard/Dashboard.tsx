@@ -72,7 +72,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
     },
     {
       id: "public-docs",
-      title: "Documentos públicos",
+      title: "Documentación Laboral",
       description: "Políticas, calendarios y recursos de la empresa",
       icon: (
         <svg

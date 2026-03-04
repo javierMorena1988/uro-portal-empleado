@@ -232,21 +232,50 @@ export interface DictionaryInfoResponse {
 
 export async function getDictionaryInfo(dictionaryID: number): Promise<DictionaryInfoResponse> {
   try {
-    const resp = await fetch(`${API_BASE_URL}/therefore/getDictionaryInfo`, {
+    const url = `${API_BASE_URL}/therefore/getDictionaryInfo`;
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] Llamando a:', url);
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] Body:', { ByDictionaryID: dictionaryID });
+    
+    const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ByDictionaryID: dictionaryID }),
     });
     
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] Respuesta status:', resp.status);
+    
     if (!resp.ok) {
-      const errorData = await resp.json().catch(() => ({ message: `Error ${resp.status}` }));
-      throw new Error(errorData.error || errorData.message || `GetDictionaryInfo failed: ${resp.status}`);
+      const errorText = await resp.text().catch(() => 'Error desconocido');
+      // eslint-disable-next-line no-console
+      console.error('[GetDictionaryInfo] Error en respuesta:', errorText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText };
+      }
+      
+      return {
+        success: false,
+        error: errorData.error || errorData.message || `GetDictionaryInfo failed: ${resp.status}`,
+      };
     }
     
-    return await resp.json();
+    const data = await resp.json();
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] Respuesta exitosa:', data);
+    return data;
   } catch (err) {
-    console.error('[GetDictionaryInfo] Error:', err);
-    throw err;
+    // eslint-disable-next-line no-console
+    console.error('[GetDictionaryInfo] Error en fetch:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Error desconocido al obtener información del diccionario',
+    };
   }
 }
 

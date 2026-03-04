@@ -8,14 +8,14 @@ import { generateSecret, generateQRCode, verifyToken } from './services/twoFacto
 import { saveSecret, getSecret, is2FAEnabled, enable2FA, disable2FA, hasSecret } from './services/twoFactorStorage.js';
 import { findEmpleadoByEmail } from './services/empleadosService.js';
 
-// Obtener el directorio actual del m√≥dulo
+// Obtener el directorio actual del mÛdulo
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Cargar .env desde la ra√≠z del proyecto (un nivel arriba de server/)
+// Cargar .env desde la raÌz del proyecto (un nivel arriba de server/)
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
-// Usar mock o LDAP real seg√∫n configuraci√≥n
+// Usar mock o LDAP real seg˙n configuraciÛn
 const useMockAuth = process.env.MOCK_AUTH === 'true';
 
 // eslint-disable-next-line no-console
@@ -27,7 +27,7 @@ console.log('[Config] useMockAuth:', useMockAuth);
 import * as mockAuthService from './services/mockAuthService.js';
 import * as ldapAuthService from './services/ldapService.js';
 
-// Seleccionar qu√© servicio usar seg√∫n configuraci√≥n
+// Seleccionar quÈ servicio usar seg˙n configuraciÛn
 let authService;
 let authenticateUser;
 let changePassword;
@@ -120,7 +120,7 @@ app.post('/api/therefore/executeSingleQuery', async (req, res) => {
 });
 
 // POST /api/therefore/publicDocuments
-// Obtiene documentos p√∫blicos para un empleado usando ExecuteSingleQuery
+// Obtiene documentos p˙blicos para un empleado usando ExecuteSingleQuery
 // Body: { idEmpleado: string }
 app.post('/api/therefore/publicDocuments', async (req, res) => {
   try {
@@ -149,7 +149,7 @@ app.post('/api/therefore/publicDocuments', async (req, res) => {
       });
     }
 
-    // Construir la petici√≥n EXACTAMENTE como se proporcion√≥
+    // Construir la peticiÛn EXACTAMENTE como se proporcionÛ
     const requestBody = {
       FullText: '',
       Query: {
@@ -180,12 +180,37 @@ app.post('/api/therefore/publicDocuments', async (req, res) => {
     console.log('[PublicDocuments] Request body:', JSON.stringify(requestBody, null, 2));
     // eslint-disable-next-line no-console
     console.log('[PublicDocuments] URL:', url);
+    // eslint-disable-next-line no-console
+    console.log('[PublicDocuments] THEREFORE_BASE_URL:', base);
     
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: buildAuthHeaders(),
-      body: JSON.stringify(requestBody),
-    });
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: buildAuthHeaders(),
+        body: JSON.stringify(requestBody),
+      });
+    } catch (fetchError) {
+      // eslint-disable-next-line no-console
+      console.error('[PublicDocuments] Error en fetch:', fetchError.message);
+      // eslint-disable-next-line no-console
+      console.error('[PublicDocuments] Error name:', fetchError.name);
+      // eslint-disable-next-line no-console
+      console.error('[PublicDocuments] Error code:', fetchError.code);
+      // eslint-disable-next-line no-console
+      console.error('[PublicDocuments] Error cause:', fetchError.cause);
+      
+      return res.status(500).json({ 
+        success: false,
+        error: `Error de conexiÛn con Therefore: ${fetchError.message}`,
+        details: process.env.NODE_ENV === 'development' ? {
+          url,
+          errorName: fetchError.name,
+          errorCode: fetchError.code,
+          errorCause: fetchError.cause,
+        } : undefined
+      });
+    }
     
     if (!resp.ok) {
       const errorText = await resp.text().catch(() => 'Error desconocido');
@@ -231,21 +256,21 @@ app.post('/api/therefore/publicDocuments', async (req, res) => {
     }
     
     // eslint-disable-next-line no-console
-    console.log('[PublicDocuments] Documentos extra√≠dos:', documents.length);
+    console.log('[PublicDocuments] Documentos extraÌdos:', documents.length);
     // eslint-disable-next-line no-console
     console.log('[PublicDocuments] Primer documento (ejemplo):', documents[0] || 'No hay documentos');
     
     // Si no encontramos documentos, devolver la estructura completa para debug
     if (documents.length === 0 && data) {
       // eslint-disable-next-line no-console
-      console.log('[PublicDocuments] ‚ö†Ô∏è No se encontraron documentos. Estructura de respuesta:', Object.keys(data));
+      console.log('[PublicDocuments] ?? No se encontraron documentos. Estructura de respuesta:', Object.keys(data));
       // eslint-disable-next-line no-console
       console.log('[PublicDocuments] Tipo de respuesta:', typeof data);
       // eslint-disable-next-line no-console
-      console.log('[PublicDocuments] ¬øEs array?', Array.isArray(data));
+      console.log('[PublicDocuments] øEs array?', Array.isArray(data));
     }
     
-    // Siempre incluir debug para ver qu√© est√° devolviendo Therefore
+    // Siempre incluir debug para ver quÈ est· devolviendo Therefore
     res.json({
       success: true,
       documents,
@@ -266,7 +291,7 @@ app.post('/api/therefore/publicDocuments', async (req, res) => {
     console.error('[PublicDocuments] Error:', err.message);
     res.status(500).json({ 
       success: false,
-      error: err.message || 'Error al obtener documentos p√∫blicos',
+      error: err.message || 'Error al obtener documentos p˙blicos',
       details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
@@ -281,14 +306,14 @@ app.post('/api/therefore/getDocument', async (req, res) => {
     if (!DocNo) {
       return res.status(400).json({ 
         message: 'Missing DocNo',
-        error: 'DocNo es requerido en el body de la petici√≥n'
+        error: 'DocNo es requerido en el body de la peticiÛn'
       });
     }
     
     const base = process.env.THEREFORE_BASE_URL;
     if (!base) {
       // eslint-disable-next-line no-console
-      console.error('[Therefore] THEREFORE_BASE_URL no est√° configurado');
+      console.error('[Therefore] THEREFORE_BASE_URL no est· configurado');
       return res.status(500).json({ 
         message: 'GetDocument failed: THEREFORE_BASE_URL no configurado',
         error: 'Configura THEREFORE_BASE_URL en el archivo .env'
@@ -313,7 +338,7 @@ app.post('/api/therefore/getDocument', async (req, res) => {
 
     const url = joinUrl(base, 'GetDocument');
     // eslint-disable-next-line no-console
-    console.log('[Therefore] Consultando documento:', DocNo, VersionNo ? `versi√≥n ${VersionNo}` : '(√∫ltima versi√≥n)');
+    console.log('[Therefore] Consultando documento:', DocNo, VersionNo ? `versiÛn ${VersionNo}` : '(˙ltima versiÛn)');
     // eslint-disable-next-line no-console
     console.log('[Therefore] URL:', url);
     // eslint-disable-next-line no-console
@@ -364,14 +389,14 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
     if (!DocNo) {
       return res.status(400).json({ 
         message: 'Missing DocNo',
-        error: 'DocNo es requerido en el body de la petici√≥n'
+        error: 'DocNo es requerido en el body de la peticiÛn'
       });
     }
     
     const base = process.env.THEREFORE_BASE_URL;
     if (!base) {
       // eslint-disable-next-line no-console
-      console.error('[Therefore] THEREFORE_BASE_URL no est√° configurado');
+      console.error('[Therefore] THEREFORE_BASE_URL no est· configurado');
       return res.status(500).json({ 
         message: 'DownloadDocument failed: THEREFORE_BASE_URL no configurado',
         error: 'Configura THEREFORE_BASE_URL en el archivo .env'
@@ -388,7 +413,7 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
       });
     }
 
-    // Construir el body para Therefore seg√∫n la documentaci√≥n
+    // Construir el body para Therefore seg˙n la documentaciÛn
     // https://therefore.net/help/2024/en-us/AR/SDK/WebAPI/the_webapi_operation_getdocument.html
     const requestBody = { 
       DocNo,
@@ -398,13 +423,13 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
     if (VersionNo !== undefined) {
       requestBody.VersionNo = VersionNo;
     } else {
-      requestBody.VersionNo = 0; // 0 = √∫ltima versi√≥n seg√∫n la documentaci√≥n
+      requestBody.VersionNo = 0; // 0 = ˙ltima versiÛn seg˙n la documentaciÛn
     }
 
     // Usar GetDocument directamente como me indicaron
     const url = joinUrl(base, 'GetDocument');
     // eslint-disable-next-line no-console
-    console.log('[Therefore] Descargando documento:', DocNo, VersionNo ? `versi√≥n ${VersionNo}` : '(√∫ltima versi√≥n)');
+    console.log('[Therefore] Descargando documento:', DocNo, VersionNo ? `versiÛn ${VersionNo}` : '(˙ltima versiÛn)');
     // eslint-disable-next-line no-console
     console.log('[Therefore] URL:', url);
     // eslint-disable-next-line no-console
@@ -422,16 +447,16 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
     console.log('[Therefore] Content-Type:', resp.headers.get('content-type'));
     
     if (!resp.ok) {
-      // Verificar si es error de autenticaci√≥n
+      // Verificar si es error de autenticaciÛn
       let errorText = await resp.text().catch(() => 'Error desconocido');
       try {
         const errorJson = JSON.parse(errorText);
         if (errorJson.WSError && errorJson.WSError.ErrorCodeString === 'InvalidLogin') {
           // eslint-disable-next-line no-console
-          console.error('[Therefore] Error de autenticaci√≥n con GetDocument');
+          console.error('[Therefore] Error de autenticaciÛn con GetDocument');
           return res.status(401).json({ 
-            message: 'Error de autenticaci√≥n con Therefore',
-            error: 'Credenciales inv√°lidas. Verifica THEREFORE_USERNAME y THEREFORE_PASSWORD en el archivo .env',
+            message: 'Error de autenticaciÛn con Therefore',
+            error: 'Credenciales inv·lidas. Verifica THEREFORE_USERNAME y THEREFORE_PASSWORD en el archivo .env',
             details: errorJson.WSError.ErrorMessage || 'Invalid user name or password',
             status: 401
           });
@@ -452,7 +477,7 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
       });
     }
     
-    // GetDocument siempre devuelve JSON seg√∫n la documentaci√≥n
+    // GetDocument siempre devuelve JSON seg˙n la documentaciÛn
     const docData = await resp.json().catch(() => null);
     
     if (!docData) {
@@ -463,9 +488,9 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
     }
     
     // eslint-disable-next-line no-console
-    console.log('[Therefore] GetDocument devolvi√≥ JSON');
+    console.log('[Therefore] GetDocument devolviÛ JSON');
     
-    // Seg√∫n la documentaci√≥n, los streams est√°n en StreamsInfo
+    // Seg˙n la documentaciÛn, los streams est·n en StreamsInfo
     // https://therefore.net/help/2024/en-us/AR/SDK/WebAPI/the_webapi_operation_getdocument.html
     if (docData.StreamsInfo && docData.StreamsInfo.length > 0) {
       const stream = docData.StreamsInfo[0]; // Tomar el primer stream
@@ -474,7 +499,7 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
       let streamData = null;
       let filename = stream.FileName || `document_${DocNo}.pdf`;
       
-      // Preferir StreamDataBase64JSON si est√° disponible (m√°s f√°cil de manejar en JSON)
+      // Preferir StreamDataBase64JSON si est· disponible (m·s f·cil de manejar en JSON)
       if (stream.StreamDataBase64JSON) {
         streamData = Buffer.from(stream.StreamDataBase64JSON, 'base64');
         // eslint-disable-next-line no-console
@@ -494,7 +519,7 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
       }
       
       if (streamData) {
-        // Determinar el tipo de contenido basado en la extensi√≥n del archivo
+        // Determinar el tipo de contenido basado en la extensiÛn del archivo
         const ext = filename.split('.').pop()?.toLowerCase();
         const contentTypeMap = {
           'pdf': 'application/pdf',
@@ -517,11 +542,11 @@ app.post('/api/therefore/downloadDocument', async (req, res) => {
     
     // Si no hay streams o no se pudo extraer el contenido
     // eslint-disable-next-line no-console
-    console.warn('[Therefore] No se encontr√≥ contenido del stream en la respuesta');
+    console.warn('[Therefore] No se encontrÛ contenido del stream en la respuesta');
     return res.status(500).json({ 
       message: 'DownloadDocument failed',
-      error: 'No se encontr√≥ contenido del documento en la respuesta',
-      details: 'El documento puede no tener streams o los datos no est√°n disponibles'
+      error: 'No se encontrÛ contenido del documento en la respuesta',
+      details: 'El documento puede no tener streams o los datos no est·n disponibles'
     });
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -556,7 +581,7 @@ app.post('/api/therefore/createDocument', async (req, res) => {
 // ==================== ENDPOINT GET DICTIONARY INFO ====================
 /**
  * POST /api/therefore/getDictionaryInfo
- * Obtiene informaci√≥n del diccionario de Therefore (descripciones de tipos de documento)
+ * Obtiene informaciÛn del diccionario de Therefore (descripciones de tipos de documento)
  * Body: { ByDictionaryID: number }
  */
 app.post('/api/therefore/getDictionaryInfo', async (req, res) => {
@@ -597,12 +622,37 @@ app.post('/api/therefore/getDictionaryInfo', async (req, res) => {
     console.log('[GetDictionaryInfo] URL:', url);
     // eslint-disable-next-line no-console
     console.log('[GetDictionaryInfo] Request body:', JSON.stringify(requestBody, null, 2));
+    // eslint-disable-next-line no-console
+    console.log('[GetDictionaryInfo] THEREFORE_BASE_URL:', base);
     
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: buildAuthHeaders(),
-      body: JSON.stringify(requestBody),
-    });
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: buildAuthHeaders(),
+        body: JSON.stringify(requestBody),
+      });
+    } catch (fetchError) {
+      // eslint-disable-next-line no-console
+      console.error('[GetDictionaryInfo] Error en fetch:', fetchError.message);
+      // eslint-disable-next-line no-console
+      console.error('[GetDictionaryInfo] Error name:', fetchError.name);
+      // eslint-disable-next-line no-console
+      console.error('[GetDictionaryInfo] Error code:', fetchError.code);
+      // eslint-disable-next-line no-console
+      console.error('[GetDictionaryInfo] Error cause:', fetchError.cause);
+      
+      return res.status(500).json({ 
+        success: false,
+        error: `Error de conexiÛn con Therefore: ${fetchError.message}`,
+        details: process.env.NODE_ENV === 'development' ? {
+          url,
+          errorName: fetchError.name,
+          errorCode: fetchError.code,
+          errorCause: fetchError.cause,
+        } : undefined
+      });
+    }
     
     if (!resp.ok) {
       const errorText = await resp.text().catch(() => 'Error desconocido');
@@ -629,7 +679,7 @@ app.post('/api/therefore/getDictionaryInfo', async (req, res) => {
     console.error('[GetDictionaryInfo] Error:', err.message);
     res.status(500).json({ 
       success: false,
-      error: err.message || 'Error al obtener informaci√≥n del diccionario',
+      error: err.message || 'Error al obtener informaciÛn del diccionario',
       details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
@@ -649,7 +699,7 @@ app.get('/api/debug/empleados', async (req, res) => {
       success: true,
       total: empleados.length,
       empleados: empleados.slice(0, 10), // Primeros 10 para no saturar
-      message: 'Endpoint de debug - revisa la consola del servidor para m√°s detalles',
+      message: 'Endpoint de debug - revisa la consola del servidor para m·s detalles',
     });
   } catch (error) {
     res.status(500).json({
@@ -677,7 +727,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Usuario y contrase√±a son requeridos' 
+        error: 'Usuario y contraseÒa son requeridos' 
       });
     }
 
@@ -701,7 +751,7 @@ app.post('/api/auth/login', async (req, res) => {
     // eslint-disable-next-line no-console
     console.log('[Login] Email a verificar:', userEmail);
 
-    // PASO 1: Verificar que el email est√° en la lista de empleados con acceso
+    // PASO 1: Verificar que el email est· en la lista de empleados con acceso
     // eslint-disable-next-line no-console
     console.log('[Login] Verificando acceso del empleado...');
     const empleado = await findEmpleadoByEmail(userEmail);
@@ -731,11 +781,11 @@ app.post('/api/auth/login', async (req, res) => {
     
     if (!authenticateUser) {
       // eslint-disable-next-line no-console
-      console.error('[Login] ERROR: authenticateUser no est√° definido!');
+      console.error('[Login] ERROR: authenticateUser no est· definido!');
       return res.status(500).json({
         success: false,
-        error: 'Error de configuraci√≥n del servidor',
-        details: 'authenticateUser no est√° definido',
+        error: 'Error de configuraciÛn del servidor',
+        details: 'authenticateUser no est· definido',
       });
     }
     
@@ -749,15 +799,15 @@ app.post('/api/auth/login', async (req, res) => {
     // eslint-disable-next-line no-console
     console.log('[Login] Usuario tiene 2FA habilitado:', has2FA, 'Tiene secreto guardado:', hasStoredSecret);
     
-    // Si tiene un secreto guardado (incluso si no est√° habilitado), primero intentar con c√≥digo
-    // Esto permite que usuarios que ya escanearon el QR puedan usar el c√≥digo sin reconfigurar
+    // Si tiene un secreto guardado (incluso si no est· habilitado), primero intentar con cÛdigo
+    // Esto permite que usuarios que ya escanearon el QR puedan usar el cÛdigo sin reconfigurar
     if (hasStoredSecret && !twoFactorCode) {
       // eslint-disable-next-line no-console
-      console.log('[Login] Usuario tiene secreto guardado, requiere c√≥digo 2FA');
+      console.log('[Login] Usuario tiene secreto guardado, requiere cÛdigo 2FA');
       return res.status(200).json({
         success: false,
         requiresTwoFactor: true,
-        message: 'Se requiere c√≥digo de autenticaci√≥n de doble factor',
+        message: 'Se requiere cÛdigo de autenticaciÛn de doble factor',
       });
     }
 
@@ -766,36 +816,36 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(403).json({
         success: false,
         requires2FASetup: true,
-        error: 'Debes configurar la autenticaci√≥n de doble factor antes de poder iniciar sesi√≥n. Por favor, contacta con el administrador o configura 2FA desde tu perfil.',
+        error: 'Debes configurar la autenticaciÛn de doble factor antes de poder iniciar sesiÛn. Por favor, contacta con el administrador o configura 2FA desde tu perfil.',
         message: '2FA no configurado. Debe configurarse antes del primer acceso.',
       });
     }
     
-    // Si tiene 2FA habilitado pero no tiene c√≥digo, pedirlo
+    // Si tiene 2FA habilitado pero no tiene cÛdigo, pedirlo
     if (has2FA && !twoFactorCode) {
       // eslint-disable-next-line no-console
-      console.log('[Login] Requiere c√≥digo 2FA');
+      console.log('[Login] Requiere cÛdigo 2FA');
       return res.status(200).json({
         success: false,
         requiresTwoFactor: true,
-        message: 'Se requiere c√≥digo de autenticaci√≥n de doble factor',
+        message: 'Se requiere cÛdigo de autenticaciÛn de doble factor',
       });
     }
 
-    // Si tiene c√≥digo, verificar el c√≥digo 2FA
+    // Si tiene cÛdigo, verificar el cÛdigo 2FA
     if (twoFactorCode) {
       const userSecret = getSecret(cleanUsername);
       if (!userSecret || !verifyToken(userSecret.secret, twoFactorCode)) {
         return res.status(401).json({
           success: false,
-          error: 'C√≥digo de autenticaci√≥n de doble factor inv√°lido',
+          error: 'CÛdigo de autenticaciÛn de doble factor inv·lido',
         });
       }
       
-      // Si el c√≥digo es v√°lido pero 2FA no estaba habilitado, habilitarlo ahora
+      // Si el cÛdigo es v·lido pero 2FA no estaba habilitado, habilitarlo ahora
       if (!has2FA) {
         // eslint-disable-next-line no-console
-        console.log('[Login] C√≥digo v√°lido, habilitando 2FA para usuario:', cleanUsername);
+        console.log('[Login] CÛdigo v·lido, habilitando 2FA para usuario:', cleanUsername);
         await enable2FA(cleanUsername);
       }
     }
@@ -841,7 +891,7 @@ app.post('/api/auth/login', async (req, res) => {
     // eslint-disable-next-line no-console
     console.error('[Login] Error stack:', error.stack);
     
-    // Si es modo LDAP (no mock), incluir detalles t√©cnicos para el equipo de backend
+    // Si es modo LDAP (no mock), incluir detalles tÈcnicos para el equipo de backend
     const isLdapMode = !useMockAuth;
     const errorDetails = {
       message: error.message,
@@ -849,7 +899,7 @@ app.post('/api/auth/login', async (req, res) => {
       code: error.code,
     };
     
-    // Agregar informaci√≥n de configuraci√≥n LDAP si est√° en modo LDAP
+    // Agregar informaciÛn de configuraciÛn LDAP si est· en modo LDAP
     if (isLdapMode) {
       errorDetails.ldapConfig = {
         ldapUrl: process.env.LDAP_URL ? 'Configurado' : 'No configurado',
@@ -858,7 +908,7 @@ app.post('/api/auth/login', async (req, res) => {
         hasAdminPassword: !!process.env.LDAP_ADMIN_PASSWORD,
       };
       
-      // Si hay un error espec√≠fico de LDAP, agregar m√°s detalles
+      // Si hay un error especÌfico de LDAP, agregar m·s detalles
       if (error.code) {
         errorDetails.ldapErrorCode = error.code;
       }
@@ -867,19 +917,19 @@ app.post('/api/auth/login', async (req, res) => {
       }
     }
     
-    // Errores de autenticaci√≥n (credenciales inv√°lidas)
+    // Errores de autenticaciÛn (credenciales inv·lidas)
     if (error.message && (
-      error.message.includes('Credenciales inv√°lidas') || 
+      error.message.includes('Credenciales inv·lidas') || 
       error.message.includes('Usuario no encontrado') ||
       error.message.includes('InvalidCredentialsError') ||
       error.code === 49
     )) {
       return res.status(401).json({
         success: false,
-        error: 'Credenciales inv√°lidas',
+        error: 'Credenciales inv·lidas',
         ...(isLdapMode && { 
           details: errorDetails,
-          // Informaci√≥n para el equipo de backend
+          // InformaciÛn para el equipo de backend
           backendInfo: {
             errorType: 'LDAP Authentication Error',
             ldapErrorCode: error.code,
@@ -892,30 +942,30 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Errores de conexi√≥n LDAP
+    // Errores de conexiÛn LDAP
     if (isLdapMode && (
       error.message.includes('ECONNREFUSED') ||
       error.message.includes('ETIMEDOUT') ||
       error.message.includes('ENOTFOUND') ||
       error.message.includes('getaddrinfo') ||
-      error.message.includes('Error de autenticaci√≥n admin LDAP') ||
-      error.message.includes('Error de b√∫squeda LDAP')
+      error.message.includes('Error de autenticaciÛn admin LDAP') ||
+      error.message.includes('Error de b˙squeda LDAP')
     )) {
       return res.status(503).json({
         success: false,
-        error: 'Error de conexi√≥n con el servidor de autenticaci√≥n',
+        error: 'Error de conexiÛn con el servidor de autenticaciÛn',
         details: errorDetails,
         backendInfo: {
           errorType: 'LDAP Connection Error',
           ldapErrorCode: error.code,
           ldapErrorMessage: error.message,
           ldapUrl: process.env.LDAP_URL,
-          suggestion: 'Verificar que el servidor LDAP est√© accesible, la URL sea correcta, y que est√©s conectado a la VPN si es necesario',
+          suggestion: 'Verificar que el servidor LDAP estÈ accesible, la URL sea correcta, y que estÈs conectado a la VPN si es necesario',
         },
       });
     }
 
-    // Otros errores - devolver informaci√≥n detallada para debugging
+    // Otros errores - devolver informaciÛn detallada para debugging
     const statusCode = isLdapMode ? 500 : 500;
     res.status(statusCode).json({
       success: false,
@@ -941,7 +991,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 /**
  * POST /api/auth/change-password
- * Cambia la contrase√±a de un usuario en LDAP/Active Directory
+ * Cambia la contraseÒa de un usuario en LDAP/Active Directory
  * Body: { username: string, oldPassword: string, newPassword: string }
  */
 app.post('/api/auth/change-password', async (req, res) => {
@@ -951,40 +1001,40 @@ app.post('/api/auth/change-password', async (req, res) => {
     if (!username || !oldPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        error: 'Usuario, contrase√±a actual y nueva contrase√±a son requeridos',
+        error: 'Usuario, contraseÒa actual y nueva contraseÒa son requeridos',
       });
     }
 
-    // Validar longitud m√≠nima de contrase√±a
+    // Validar longitud mÌnima de contraseÒa
     const minLength = parseInt(process.env.LDAP_PASSWORD_MIN_LENGTH || '8', 10);
     if (newPassword.length < minLength) {
       return res.status(400).json({
         success: false,
-        error: `La contrase√±a debe tener al menos ${minLength} caracteres`,
+        error: `La contraseÒa debe tener al menos ${minLength} caracteres`,
       });
     }
 
-    // Cambiar contrase√±a en LDAP
+    // Cambiar contraseÒa en LDAP
     await changePassword(username, oldPassword, newPassword);
 
     res.json({
       success: true,
-      message: 'Contrase√±a cambiada correctamente',
+      message: 'ContraseÒa cambiada correctamente',
     });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[LDAP Change Password] Error:', error.message);
 
-    // Errores de autenticaci√≥n
-    if (error.message.includes('contrase√±a actual es incorrecta')) {
+    // Errores de autenticaciÛn
+    if (error.message.includes('contraseÒa actual es incorrecta')) {
       return res.status(401).json({
         success: false,
-        error: 'La contrase√±a actual es incorrecta',
+        error: 'La contraseÒa actual es incorrecta',
       });
     }
 
-    // Errores de pol√≠ticas de contrase√±a
-    if (error.message.includes('pol√≠ticas de seguridad') || 
+    // Errores de polÌticas de contraseÒa
+    if (error.message.includes('polÌticas de seguridad') || 
         error.message.includes('requisitos de complejidad')) {
       return res.status(400).json({
         success: false,
@@ -995,7 +1045,7 @@ app.post('/api/auth/change-password', async (req, res) => {
     // Otros errores
     res.status(500).json({
       success: false,
-      error: 'Error al cambiar la contrase√±a',
+      error: 'Error al cambiar la contraseÒa',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
@@ -1003,7 +1053,7 @@ app.post('/api/auth/change-password', async (req, res) => {
 
 /**
  * GET /api/auth/verify
- * Verifica un token JWT (opcional, para validar sesi√≥n)
+ * Verifica un token JWT (opcional, para validar sesiÛn)
  * Headers: Authorization: Bearer <token>
  */
 app.get('/api/auth/verify', async (req, res) => {
@@ -1025,7 +1075,7 @@ app.get('/api/auth/verify', async (req, res) => {
   } catch (error) {
     res.status(401).json({
       success: false,
-      error: 'Token inv√°lido o expirado',
+      error: 'Token inv·lido o expirado',
     });
   }
 });
@@ -1073,7 +1123,7 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
         console.error('[2FA Setup] Error autenticando:', error.message);
         return res.status(401).json({
           success: false,
-          error: 'Credenciales inv√°lidas. Debes proporcionar usuario y contrase√±a correctos para configurar 2FA.',
+          error: 'Credenciales inv·lidas. Debes proporcionar usuario y contraseÒa correctos para configurar 2FA.',
         });
       }
     }
@@ -1082,22 +1132,22 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
     if (is2FAEnabled(cleanUsername)) {
       return res.status(400).json({
         success: false,
-        error: '2FA ya est√° configurado para este usuario. Si ya escaneaste el QR, simplemente ingresa el c√≥digo de 6 d√≠gitos de tu aplicaci√≥n de autenticaci√≥n.',
+        error: '2FA ya est· configurado para este usuario. Si ya escaneaste el QR, simplemente ingresa el cÛdigo de 6 dÌgitos de tu aplicaciÛn de autenticaciÛn.',
       });
     }
     
-    // Si tiene un secreto guardado pero no est√° habilitado, sugerir usar el c√≥digo existente
+    // Si tiene un secreto guardado pero no est· habilitado, sugerir usar el cÛdigo existente
     if (hasSecret(cleanUsername)) {
       return res.status(400).json({
         success: false,
-        error: 'Ya tienes un c√≥digo 2FA configurado. Por favor, ingresa el c√≥digo de 6 d√≠gitos de tu aplicaci√≥n de autenticaci√≥n. Si no tienes acceso, contacta al administrador.',
+        error: 'Ya tienes un cÛdigo 2FA configurado. Por favor, ingresa el cÛdigo de 6 dÌgitos de tu aplicaciÛn de autenticaciÛn. Si no tienes acceso, contacta al administrador.',
       });
     }
 
     // Generar secreto (usar username normalizado)
     const { secret, otpauth_url } = generateSecret(cleanUsername);
     
-    // Guardar secreto (a√∫n no habilitado, usar username normalizado)
+    // Guardar secreto (a˙n no habilitado, usar username normalizado)
     await saveSecret(cleanUsername, secret);
 
     // Generar QR code
@@ -1105,7 +1155,7 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
 
     res.json({
       success: true,
-      secret, // Solo para desarrollo, en producci√≥n no enviar
+      secret, // Solo para desarrollo, en producciÛn no enviar
       qrCode,
       otpauth_url,
     });
@@ -1122,7 +1172,7 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
 
 /**
  * POST /api/auth/2fa/verify
- * Verifica un c√≥digo 2FA y habilita 2FA para el usuario
+ * Verifica un cÛdigo 2FA y habilita 2FA para el usuario
  * Body: { username: string, code: string }
  */
 app.post('/api/auth/2fa/verify', async (req, res) => {
@@ -1132,7 +1182,7 @@ app.post('/api/auth/2fa/verify', async (req, res) => {
     if (!username || !code) {
       return res.status(400).json({
         success: false,
-        error: 'Usuario y c√≥digo requeridos',
+        error: 'Usuario y cÛdigo requeridos',
       });
     }
 
@@ -1156,11 +1206,11 @@ app.post('/api/auth/2fa/verify', async (req, res) => {
       });
     }
 
-    // Verificar c√≥digo
+    // Verificar cÛdigo
     if (!verifyToken(userSecret.secret, code)) {
       return res.status(401).json({
         success: false,
-        error: 'C√≥digo inv√°lido',
+        error: 'CÛdigo inv·lido',
       });
     }
 
@@ -1176,7 +1226,7 @@ app.post('/api/auth/2fa/verify', async (req, res) => {
     console.error('[2FA Verify] Error:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Error al verificar c√≥digo 2FA',
+      error: 'Error al verificar cÛdigo 2FA',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
@@ -1251,15 +1301,15 @@ if (process.env.NODE_ENV === 'development') {
 
 /**
  * GET /api/therefore/config-check
- * Endpoint de diagn√≥stico para verificar configuraci√≥n de Therefore (SOLO DESARROLLO)
+ * Endpoint de diagnÛstico para verificar configuraciÛn de Therefore (SOLO DESARROLLO)
  */
 if (process.env.NODE_ENV === 'development') {
   app.get('/api/therefore/config-check', async (req, res) => {
     const config = {
-      THEREFORE_BASE_URL: process.env.THEREFORE_BASE_URL ? '‚úÖ Configurado' : '‚ùå No configurado',
-      THEREFORE_USERNAME: process.env.THEREFORE_USERNAME ? '‚úÖ Configurado' : '‚ùå No configurado',
-      THEREFORE_PASSWORD: process.env.THEREFORE_PASSWORD ? '‚úÖ Configurado' : '‚ùå No configurado',
-      THEREFORE_TENANT: process.env.THEREFORE_TENANT ? '‚úÖ Configurado (opcional)' : '‚ö†Ô∏è No configurado (opcional)',
+      THEREFORE_BASE_URL: process.env.THEREFORE_BASE_URL ? '? Configurado' : '? No configurado',
+      THEREFORE_USERNAME: process.env.THEREFORE_USERNAME ? '? Configurado' : '? No configurado',
+      THEREFORE_PASSWORD: process.env.THEREFORE_PASSWORD ? '? Configurado' : '? No configurado',
+      THEREFORE_TENANT: process.env.THEREFORE_TENANT ? '? Configurado (opcional)' : '?? No configurado (opcional)',
     };
     
     const allConfigured = process.env.THEREFORE_BASE_URL && 
@@ -1269,20 +1319,20 @@ if (process.env.NODE_ENV === 'development') {
     res.json({
       success: allConfigured,
       message: allConfigured 
-        ? 'Todas las variables de Therefore est√°n configuradas' 
-        : 'Faltan variables de configuraci√≥n de Therefore',
+        ? 'Todas las variables de Therefore est·n configuradas' 
+        : 'Faltan variables de configuraciÛn de Therefore',
       config,
       instructions: !allConfigured ? {
-        step1: 'Crea un archivo .env en la ra√≠z del proyecto (si no existe)',
+        step1: 'Crea un archivo .env en la raÌz del proyecto (si no existe)',
         step2: 'Copia el contenido de env.example.txt',
         step3: 'Configura las siguientes variables:',
         variables: {
           THEREFORE_BASE_URL: 'https://therefore.urovesa.com:443/theservice/v0001/restun',
           THEREFORE_USERNAME: 'tu_usuario_therefore',
-          THEREFORE_PASSWORD: 'tu_contrase√±a_therefore',
+          THEREFORE_PASSWORD: 'tu_contraseÒa_therefore',
           THEREFORE_TENANT: 'nombre_tenant (opcional)',
         },
-        step4: 'Reinicia el servidor despu√©s de configurar',
+        step4: 'Reinicia el servidor despuÈs de configurar',
       } : null,
     });
   });

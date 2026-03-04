@@ -4,9 +4,9 @@
  */
 
 // Obtener el base path desde import.meta.env.BASE_URL (configurado por Vite)
-// En producción con BASE_PATH=/Empleado/, será '/Empleado/'
-// En desarrollo, será '/PortalEmpleado/'
-const basePath = import.meta.env.BASE_URL || '/Empleado/';
+// En desarrollo, BASE_URL será '/' y el proxy de Vite manejará '/api'
+// En producción, BASE_URL será '/Empleado/' y las llamadas serán '/Empleado/api'
+const basePath = import.meta.env.BASE_URL || (import.meta.env.DEV ? '/' : '/Empleado/');
 
 // Construir la URL base de la API
 export const API_BASE_URL = `${basePath}api`;

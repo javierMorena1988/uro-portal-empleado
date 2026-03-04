@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "build:dev": "cross-env BASE_PATH=/PortalEmpleado/ tsc -b && vite build",
-    "build:empleado": "cross-env BASE_PATH=/Empleado/ tsc -b && vite build",
+    "build": "cross-env BASE_PATH=/Empleado/ tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.js",

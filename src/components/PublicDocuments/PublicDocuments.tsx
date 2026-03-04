@@ -487,7 +487,7 @@ const PublicDocuments: React.FC = () => {
           <div className="public-documents-list">
             {filteredDocuments.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-                No se encontraron documentos públicos
+                No se encontraron documentos
               </div>
             ) : (
               filteredDocuments.map((document) => (

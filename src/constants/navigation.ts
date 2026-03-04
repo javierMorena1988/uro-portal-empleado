@@ -12,7 +12,7 @@ export const NAVIGATION_ITEMS = [
   },
   {
     id: 'public-docs',
-    label: 'Documentos públicos',
+    label: 'Documentación Laboral',
     icon: 'public-docs',
   },
   {
@@ -31,7 +31,7 @@ export const QUICK_ACCESS_ITEMS = [
   },
   {
     id: 'public-docs',
-    title: 'Documentos públicos',
+    title: 'Documentación Laboral',
     description: 'Políticas y recursos',
     icon: 'public-docs',
   },
