@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../../hooks";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { MESSAGES } from "../../constants";
 import OtpInput from "react-otp-input";
 import Setup2FA from "./Setup2FA";
@@ -55,7 +55,14 @@ const LoginForm: React.FC = () => {
       // Primer intento de login (sin código 2FA)
       const response = await login(data.username, data.password);
       
-      if (response.requires2FASetup) {
+      if (response.mustChangePassword) {
+        // Priorizar siempre cambio de contraseña sobre cualquier flujo de 2FA
+        const cleanUsername = (response.username || data.username).includes('@')
+          ? (response.username || data.username).split('@')[0]
+          : (response.username || data.username);
+        navigate('/change-password', { state: { username: cleanUsername, oldPassword: data.password } });
+        return;
+      } else if (response.requires2FASetup) {
         // Usuario no tiene 2FA configurado - mostrar pantalla de configuración
         setError(""); // Limpiar cualquier error previo
         setRequires2FASetup(true);
@@ -88,14 +95,20 @@ const LoginForm: React.FC = () => {
           // Después de configurar 2FA, hacer login automáticamente con el código que acaba de verificar
           setRequires2FASetup(false);
           setTwoFactorCode(verifiedCode);
-          setRequiresTwoFactor(true);
           
           // Hacer login automáticamente con el código 2FA que acaba de verificar
           try {
             const response = await login(username, password, verifiedCode);
             if (response.success) {
               navigate("/");
+            } else if (response.mustChangePassword) {
+              // Forzar cambio de contraseña tras configurar 2FA
+              navigate('/change-password', { state: { username, oldPassword: password } });
             } else {
+              // Si requiere 2FA, mantener el formulario para introducir el código manualmente
+              if (response.requiresTwoFactor) {
+                setRequiresTwoFactor(true);
+              }
               setError(response.error || "Error al completar el login");
               setTwoFactorCode(""); // Limpiar código si falla
             }
@@ -199,9 +212,11 @@ const LoginForm: React.FC = () => {
                 : MESSAGES.LOGIN.SUBMIT_BUTTON}
           </button>
 
-          <a href="#" className="forgot-password-link">
-            ¿Olvidaste tu contraseña?
-          </a>
+          <div className="login-footer">
+            <Link to="/register" className="register-link">
+              ¿No tienes contraseña? Regístrate aquí
+            </Link>
+          </div>
         </form>
       </div>
     </div>

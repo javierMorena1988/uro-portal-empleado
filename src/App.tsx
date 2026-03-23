@@ -7,6 +7,9 @@ import Payroll from './components/Payroll/Payroll';
 import PublicDocuments from './components/PublicDocuments/PublicDocuments';
 import PrivateDocuments from './components/PrivateDocuments/PrivateDocuments';
 import LoginForm from './components/Login/LoginForm';
+import RegisterForm from './components/Register/RegisterForm';
+import ChangePasswordFirstLogin from './components/ChangePassword/ChangePasswordFirstLogin';
+import UserManagement from './components/Admin/UserManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -47,6 +50,18 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginForm />} />
+        <Route path="/register" element={<RegisterForm />} />
+        <Route path="/change-password" element={<ChangePasswordFirstLogin />} />
+        <Route 
+          path="/admin/users" 
+          element={
+            <ProtectedRoute>
+              <Layout activeView="admin" onViewChange={() => {}}>
+                <UserManagement />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
         <Route 
           path="/" 
           element={

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import './Sidebar.css';
 import urovesaLogo from '../../assets/urovesa.png';
@@ -12,7 +13,53 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewChange }) => {
   const { logout, user } = useAuth();
-  const menuItems = [
+  const location = useLocation();
+  const [documentCount, setDocumentCount] = useState<number | null>(null);
+  // Solo mostrar administración para javier.morena@inforges.es
+  const userEmail = user?.email || user?.empleado?.Email || '';
+  const isAdmin = userEmail.toLowerCase() === 'javier.morena@inforges.es';
+
+  // Leer el contador de documentos desde localStorage
+  useEffect(() => {
+    const updateCount = () => {
+      const count = localStorage.getItem('publicDocumentsCount');
+      if (count) {
+        setDocumentCount(parseInt(count, 10));
+      } else {
+        setDocumentCount(null);
+      }
+    };
+
+    // Leer al montar
+    updateCount();
+
+    // Escuchar cambios en localStorage (para otras pestañas)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'publicDocumentsCount') {
+        updateCount();
+      }
+    };
+
+    // Escuchar evento personalizado (para la misma pestaña)
+    const handleCustomEvent = (e: CustomEvent<number>) => {
+      setDocumentCount(e.detail);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('publicDocumentsCountChanged', handleCustomEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('publicDocumentsCountChanged', handleCustomEvent as EventListener);
+    };
+  }, []);
+
+  const menuItems: Array<{
+    id: string;
+    label: string;
+    icon: React.ReactNode;
+    count?: number | null;
+  }> = [
     { 
       id: 'dashboard', 
       label: 'Inicio', 
@@ -39,6 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewCh
     { 
       id: 'public-docs', 
       label: 'Documentación Laboral', 
+      count: documentCount,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -127,10 +175,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewCh
                   onClick={() => handleItemClick(item.id)}
                 >
                   <span className="nav-icon">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
+                  <span className="nav-label">
+                    {item.label}
+                    {item.count !== null && item.count !== undefined && (
+                      <span className="nav-count"> ({item.count})</span>
+                    )}
+                  </span>
                 </button>
               </li>
             ))}
+            {isAdmin && (
+              <li key="admin" className="nav-item">
+                <Link 
+                  to="/admin/users"
+                  className={`nav-link ${location.pathname === '/admin/users' ? 'active' : ''}`}
+                  onClick={onClose}
+                >
+                  <span className="nav-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                  </span>
+                  <span className="nav-label">Administración</span>
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
         

@@ -307,6 +307,8 @@ export async function findEmpleadoByEmail(email) {
     const empleadoNormalizado = {
       IdEmpleado: empleado.IDEMPLEADO || empleado.IdEmpleado || empleado.idEmpleado || empleado.Id || empleado.id || empleado.ID,
       Email: empleado.EMAILPERSONAL || empleado.emailPersonal || empleado.EmailPersonal || empleado.Email || empleado.email || empleado.EMAIL || empleado.EMAIL_PERSONAL || empleado.email_personal,
+      // Nombre del empleado (puede venir en diferentes campos)
+      EMPLEADO: empleado.EMPLEADO || empleado.empleado || empleado.Nombre || empleado.nombre || empleado.NOMBRE || empleado.NombreEmpleado || empleado.nombreEmpleado || empleado.NOMBRE_EMPLEADO || empleado.nombre_empleado,
       // La API usa ACCESOTOTALPORTAL y ACCESOLIMITADOPORTAL (con "PORTAL" al final)
       accesototal: empleado.ACCESOTOTALPORTAL !== undefined ? empleado.ACCESOTOTALPORTAL : (empleado.accesototal || empleado.accesoTotal || empleado.ACCESOTOTAL || empleado.ACCESO_TOTAL || empleado.acceso_total || false),
       accesoLimitado: empleado.ACCESOLIMITADOPORTAL !== undefined ? empleado.ACCESOLIMITADOPORTAL : (empleado.accesoLimitado || empleado.ACCESOLIMITADO || empleado.ACCESO_LIMITADO || empleado.acceso_limitado || false),

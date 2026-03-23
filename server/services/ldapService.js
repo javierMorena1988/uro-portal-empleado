@@ -262,6 +262,79 @@ export async function changePassword(username, oldPassword, newPassword) {
 }
 
 /**
+ * Establece la contraseña inicial de un usuario en Active Directory (para registro)
+ * Requiere permisos de administrador
+ * @param {string} username - Nombre de usuario
+ * @param {string} password - Nueva contraseña
+ * @returns {Promise<void>}
+ */
+export async function setPassword(username, password) {
+  const client = createLDAPClient();
+  
+  // Buscar el usuario
+  let userDN;
+  try {
+    const user = await searchUser(username);
+    if (!user) {
+      throw new Error('Usuario no encontrado en LDAP');
+    }
+    userDN = user.dn;
+  } catch (error) {
+    userDN = buildUserDN(username);
+  }
+
+  return new Promise((resolve, reject) => {
+    // Autenticar como administrador
+    const adminDN = process.env.LDAP_ADMIN_DN || `CN=Administrator,CN=Users,${process.env.LDAP_BASE_DN || 'dc=tuempresa,dc=com'}`;
+    const adminPassword = process.env.LDAP_ADMIN_PASSWORD || '';
+
+    client.bind(adminDN, adminPassword, (adminBindErr) => {
+      if (adminBindErr) {
+        client.unbind();
+        return reject(new Error(`Error de autenticación admin: ${adminBindErr.message}`));
+      }
+
+      // Establecer la contraseña
+      // En Active Directory, unicodePwd debe estar entre comillas dobles y en UTF-16LE
+      const change = new ldap.Change({
+        operation: 'replace',
+        modification: {
+          unicodePwd: Buffer.from(`"${password}"`, 'utf16le'),
+        },
+      });
+
+      client.modify(userDN, change, (modifyErr) => {
+        client.unbind();
+        
+        if (modifyErr) {
+          // Errores comunes de Active Directory
+          if (modifyErr.code === 53) {
+            return reject(new Error('La contraseña no cumple con las políticas de seguridad'));
+          }
+          if (modifyErr.code === 19) {
+            return reject(new Error('La contraseña no cumple con los requisitos de complejidad'));
+          }
+          return reject(new Error(`Error al establecer contraseña: ${modifyErr.message}`));
+        }
+
+        resolve();
+      });
+    });
+  });
+}
+
+/**
+ * Cambia la contraseña de un usuario como administrador (sin necesidad de contraseña antigua)
+ * @param {string} username - Nombre de usuario
+ * @param {string} newPassword - Nueva contraseña
+ * @returns {Promise<void>}
+ */
+export async function adminChangePassword(username, newPassword) {
+  // Reutilizar setPassword que ya hace esto como admin
+  return setPassword(username, newPassword);
+}
+
+/**
  * Verifica si un usuario existe en LDAP
  * @param {string} username - Nombre de usuario
  * @returns {Promise<boolean>}

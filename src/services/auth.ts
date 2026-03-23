@@ -12,6 +12,8 @@ export interface LoginRequest {
 export interface LoginResponse {
   success: boolean;
   token?: string;
+  mustChangePassword?: boolean;
+  username?: string;
   user?: {
     username: string;
     email: string;
@@ -41,6 +43,17 @@ export interface ChangePasswordResponse {
   success: boolean;
   message?: string;
   error?: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  email?: string;
 }
 
 export interface VerifyTokenResponse {
@@ -84,8 +97,9 @@ export async function login(
 
     const data = await response.json();
 
-    // Si requiere 2FA o configuración de 2FA, devolver la respuesta aunque success sea false
-    if (data.requiresTwoFactor || data.requires2FASetup) {
+    // Si requiere 2FA, configuración de 2FA o cambio obligatorio de contraseña,
+    // devolver la respuesta aunque success sea false
+    if (data.requiresTwoFactor || data.requires2FASetup || data.mustChangePassword) {
       return data as LoginResponse;
     }
 
@@ -324,6 +338,40 @@ export async function get2FAStatus(username: string): Promise<TwoFactorStatusRes
       success: false,
       enabled: false,
       error: 'Error de conexión con el servidor',
+    };
+  }
+}
+
+/**
+ * Registra un nuevo usuario y envía la contraseña por correo
+ * @param email - Email del usuario
+ * @returns Promise con la respuesta del registro
+ */
+export async function register(email: string): Promise<RegisterResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || `Error ${response.status}`,
+      };
+    }
+
+    return data as RegisterResponse;
+  } catch (error) {
+    console.error('Error en register:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error de conexión con el servidor',
     };
   }
 }

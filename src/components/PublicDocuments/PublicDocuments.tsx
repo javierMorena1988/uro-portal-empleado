@@ -35,27 +35,27 @@ const PublicDocuments: React.FC = () => {
         console.log('[PublicDocuments] ⏳ Esperando dictionaryId... (actual:', dictionaryId, ')');
         return; // Esperar a tener el dictionaryId
       }
-      
+
       // eslint-disable-next-line no-console
       console.log('[PublicDocuments] 🚀 INICIANDO carga de diccionario con ID:', dictionaryId);
-      
+
       try {
         const dictResponse = await getDictionaryInfo(dictionaryId);
         // eslint-disable-next-line no-console
         console.log('[PublicDocuments] ✅ Respuesta de getDictionaryInfo:', JSON.stringify(dictResponse, null, 2));
-        
+
         if (dictResponse.success && dictResponse.data) {
           const types: Record<number, string> = {};
-          
+
           // La estructura es: data.Dictionary.Items[]
           // Cada item tiene: { ID: number, Name: string, ... }
           if (dictResponse.data && typeof dictResponse.data === 'object') {
             const dictionary = (dictResponse.data as any).Dictionary;
-            
+
             if (dictionary && dictionary.Items && Array.isArray(dictionary.Items)) {
               // eslint-disable-next-line no-console
               console.log('[PublicDocuments] Procesando Items del diccionario:', dictionary.Items.length);
-              
+
               dictionary.Items.forEach((item: any) => {
                 if (item.ID !== undefined && item.Name) {
                   types[item.ID] = item.Name;
@@ -70,7 +70,7 @@ const PublicDocuments: React.FC = () => {
               console.log('[PublicDocuments] Estructura de data:', Object.keys(dictResponse.data || {}));
             }
           }
-          
+
           // eslint-disable-next-line no-console
           console.log('[PublicDocuments] ✅ Tipos de documento cargados:', types);
           setDocumentTypes(types);
@@ -84,7 +84,7 @@ const PublicDocuments: React.FC = () => {
         // No es crítico, continuar sin los tipos
       }
     };
-    
+
     loadDocumentTypes();
   }, [dictionaryId]);
 
@@ -95,39 +95,79 @@ const PublicDocuments: React.FC = () => {
       console.log('[PublicDocuments] Esperando documentos...');
       return; // Esperar a tener documentos
     }
-    
+
     // eslint-disable-next-line no-console
     console.log('[PublicDocuments] ✅ Transformando documentos. Tipos cargados:', Object.keys(documentTypes).length > 0 ? 'Sí' : 'No (usando fallback)');
-    
+
     // Transformar los documentos de Therefore al formato esperado
     // La estructura es: { DocNo, IndexValues: [nombreDocumento, tipoDocumentoId], Size, VersionNo }
     // tipoDocumentoId es un número que debemos usar para obtener la descripción del diccionario
     const transformedDocs: Document[] = rawDocuments.map((doc: any, index: number) => {
       // eslint-disable-next-line no-console
       console.log(`[PublicDocuments] Procesando documento ${index}:`, doc);
-      
+
       // El nombre del documento está en IndexValues[0]
-      const nombreDocumento = doc.IndexValues && doc.IndexValues.length > 0 
-        ? doc.IndexValues[0] 
+      const nombreDocumento = doc.IndexValues && doc.IndexValues.length > 0
+        ? doc.IndexValues[0]
         : `Documento ${index + 1}`;
-      
+
       // El tipo de documento está en IndexValues[1] (ID numérico)
-      const tipoDocumentoId = doc.IndexValues && doc.IndexValues.length > 1 
-        ? Number(doc.IndexValues[1]) 
+      const tipoDocumentoId = doc.IndexValues && doc.IndexValues.length > 1
+        ? Number(doc.IndexValues[1])
         : null;
-      
+
+      // La fecha del documento está en IndexValues[2]
+      const fechaArchivoDocumento = doc.IndexValues && doc.IndexValues.length > 2
+        ? doc.IndexValues[2]
+        : null;
+
+      // Formatear la fecha
+      const formatDate = (fecha: any): string => {
+        if (!fecha) return new Date().toLocaleDateString('es-ES');
+        
+        // Si es un string con formato de fecha, intentar parsearlo
+        if (typeof fecha === 'string') {
+          try {
+            const date = new Date(fecha);
+            if (!isNaN(date.getTime())) {
+              return date.toLocaleDateString('es-ES');
+            }
+            // Si el string ya está en formato legible, devolverlo tal cual
+            return fecha;
+          } catch {
+            return fecha;
+          }
+        }
+        
+        // Si es un número (timestamp), convertirlo
+        if (typeof fecha === 'number') {
+          try {
+            const date = new Date(fecha);
+            if (!isNaN(date.getTime())) {
+              return date.toLocaleDateString('es-ES');
+            }
+          } catch {
+            // Ignorar error
+          }
+        }
+        
+        return new Date().toLocaleDateString('es-ES');
+      };
+
       // Obtener la descripción del tipo desde el diccionario usando el ID
-      const tipoDocumentoDesc = tipoDocumentoId && documentTypes[tipoDocumentoId] 
-        ? documentTypes[tipoDocumentoId] 
+      const tipoDocumentoDesc = tipoDocumentoId && documentTypes[tipoDocumentoId]
+        ? documentTypes[tipoDocumentoId]
         : null;
-      
+
       // eslint-disable-next-line no-console
       console.log(`[PublicDocuments] Tipo ID ${tipoDocumentoId} -> Descripción: ${tipoDocumentoDesc}`);
-      
+      // eslint-disable-next-line no-console
+      console.log(`[PublicDocuments] Fecha del documento: ${fechaArchivoDocumento}`);
+
       // Usar la descripción del tipo como categoría (no hardcoded)
       // Si no hay descripción, usar un fallback temporal
       const category = tipoDocumentoDesc || `Tipo ${tipoDocumentoId || 'Desconocido'}`;
-      
+
       // Formatear el tamaño (Size está en bytes)
       const sizeInBytes = doc.Size || 0;
       const formatSize = (bytes: number): string => {
@@ -137,12 +177,12 @@ const PublicDocuments: React.FC = () => {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
       };
-      
+
       return {
         id: String(doc.DocNo || index + 1),
         title: nombreDocumento,
         category: category, // Usar descripción real del diccionario (no hardcoded)
-        date: new Date().toLocaleDateString('es-ES'), // Therefore no devuelve fecha en esta consulta
+        date: formatDate(fechaArchivoDocumento), // Usar la fecha del servicio
         size: formatSize(sizeInBytes),
         DocNo: doc.DocNo,
         VersionNo: doc.VersionNo,
@@ -150,7 +190,7 @@ const PublicDocuments: React.FC = () => {
         tipoDocumentoId: tipoDocumentoId, // Guardar también el ID
       };
     });
-    
+
     // eslint-disable-next-line no-console
     console.log('[PublicDocuments] Documentos transformados:', transformedDocs);
     setDocuments(transformedDocs);
@@ -161,7 +201,7 @@ const PublicDocuments: React.FC = () => {
     const loadDocuments = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         // Obtener idEmpleado del usuario autenticado
         if (!user || !user.idEmpleado) {
@@ -169,47 +209,47 @@ const PublicDocuments: React.FC = () => {
           setLoading(false);
           return;
         }
-        
+
         const idEmpleado = user.idEmpleado;
-        
+
         const response = await getPublicDocuments(idEmpleado);
-        
+
         // eslint-disable-next-line no-console
         console.log('[PublicDocuments] Respuesta completa del backend:', JSON.stringify(response, null, 2));
-        
+
         if (response.success) {
           // Si hay información de debug, mostrarla
           if ((response as any).debug) {
             // eslint-disable-next-line no-console
             console.log('[PublicDocuments] Debug info:', (response as any).debug);
           }
-          
+
           // Extraer el ID del diccionario de la respuesta
           // Buscar en Columns el campo tipoDocumento y extraer el número del TypeTableName
           if ((response as any).debug && (response as any).debug.rawResponse) {
             const rawResponse = (response as any).debug.rawResponse;
             // eslint-disable-next-line no-console
             console.log('[PublicDocuments] 🔍 Buscando dictionaryId en rawResponse...');
-            
+
             if (rawResponse.QueryResult && rawResponse.QueryResult.Columns) {
               // eslint-disable-next-line no-console
               console.log('[PublicDocuments] ✅ Columns encontradas:', rawResponse.QueryResult.Columns.length);
-              
+
               const tipoDocumentoColumn = rawResponse.QueryResult.Columns.find(
                 (col: any) => col.ColName === 'tipoDocumento' || col.FieldID === 'tipoDocumento'
               );
-              
+
               // eslint-disable-next-line no-console
               console.log('[PublicDocuments] Columna tipoDocumento:', tipoDocumentoColumn ? '✅ encontrada' : '❌ no encontrada');
-              
+
               if (tipoDocumentoColumn) {
                 // eslint-disable-next-line no-console
                 console.log('[PublicDocuments] TypeTableName:', tipoDocumentoColumn.TypeTableName);
-                
+
                 if (tipoDocumentoColumn.TypeTableName) {
                   // Extraer el número de "TheKeywords19" -> 19
                   const match = tipoDocumentoColumn.TypeTableName.match(/TheKeywords(\d+)/);
-                  
+
                   if (match && match[1]) {
                     const extractedId = Number(match[1]);
                     // eslint-disable-next-line no-console
@@ -239,11 +279,11 @@ const PublicDocuments: React.FC = () => {
             // eslint-disable-next-line no-console
             console.error('[PublicDocuments] ❌ No se encontró debug.rawResponse en la respuesta');
           }
-          
+
           if (response.documents && response.documents.length > 0) {
             // eslint-disable-next-line no-console
             console.log('[PublicDocuments] Documentos recibidos:', response.documents);
-            
+
             // Guardar los documentos sin transformar (esperaremos a que se carguen los tipos)
             setRawDocuments(response.documents);
           } else {
@@ -316,74 +356,59 @@ const PublicDocuments: React.FC = () => {
 
   // Usar documentos reales o mock si hay error
   const displayDocuments = error && documents.length === 0 ? mockDocuments : documents;
-  
+
   const filteredDocuments =
     activeFilter === "Todos"
       ? displayDocuments
       : displayDocuments.filter((doc) => doc.category === activeFilter);
 
-  const getDocumentIcon = (category: string) => {
-    switch (category) {
-      case DOCUMENT_CATEGORIES.POLITICAS:
-        return (
-          <svg
-            width="19"
-            height="17"
-            viewBox="0 0 19 17"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1.66659 13.3334C1.44557 13.3334 1.23361 13.2456 1.07733 13.0893C0.921049 12.933 0.833252 12.7211 0.833252 12.5V1.66671C0.833252 1.44569 0.921049 1.23373 1.07733 1.07745C1.23361 0.921171 1.44557 0.833374 1.66659 0.833374H5.83325C6.71731 0.833374 7.56515 1.18456 8.19027 1.80968C8.8154 2.43481 9.16659 3.28265 9.16659 4.16671C9.16659 3.28265 9.51777 2.43481 10.1429 1.80968C10.768 1.18456 11.6159 0.833374 12.4999 0.833374H16.6666C16.8876 0.833374 17.0996 0.921171 17.2558 1.07745C17.4121 1.23373 17.4999 1.44569 17.4999 1.66671V12.5C17.4999 12.7211 17.4121 12.933 17.2558 13.0893C17.0996 13.2456 16.8876 13.3334 16.6666 13.3334H11.6666C11.0035 13.3334 10.3677 13.5968 9.89882 14.0656C9.42998 14.5344 9.16659 15.1703 9.16659 15.8334C9.16659 15.1703 8.90319 14.5344 8.43435 14.0656C7.96551 13.5968 7.32963 13.3334 6.66659 13.3334H1.66659Z"
-              stroke="currentColor"
-              strokeWidth="1.66667"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        );
-      case DOCUMENT_CATEGORIES.RECURSOS:
-        return (
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6.66675 1.66675V5.00008"
-              stroke="currentColor"
-              strokeWidth="1.66667"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M13.3333 1.66675V5.00008"
-              stroke="currentColor"
-              strokeWidth="1.66667"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M15.8333 3.33325H4.16667C3.24619 3.33325 2.5 4.07944 2.5 4.99992V16.6666C2.5 17.5871 3.24619 18.3333 4.16667 18.3333H15.8333C16.7538 18.3333 17.5 17.5871 17.5 16.6666V4.99992C2.5 4.07944 16.7538 3.33325 15.8333 3.33325Z"
-              stroke="currentColor"
-              strokeWidth="1.66667"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M2.5 8.33325H17.5"
-              stroke="currentColor"
-              strokeWidth="1.66667"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        );
-      default:
-        return null;
-    }
+  // Guardar el contador de documentos en localStorage y disparar evento para que el Sidebar lo pueda leer
+  useEffect(() => {
+    const count = displayDocuments.length;
+    localStorage.setItem('publicDocumentsCount', String(count));
+    // Disparar evento personalizado para actualizar el Sidebar en la misma pestaña
+    window.dispatchEvent(new CustomEvent('publicDocumentsCountChanged', { detail: count }));
+  }, [displayDocuments.length]);
+
+  // Iconos aleatorios para documentos
+  const documentIcons = [
+    // Icono de documento
+    <svg key="doc1" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14,2 14,8 20,8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>,
+    // Icono de carpeta
+    <svg key="folder" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>,
+    // Icono de archivo PDF
+    <svg key="pdf" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14,2 14,8 20,8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10,9 9,9 8,9" />
+    </svg>,
+    // Icono de documento con texto
+    <svg key="doc2" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14,2 14,8 20,8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <line x1="10" y1="9" x2="8" y2="9" />
+    </svg>,
+    // Icono de archivo con clip
+    <svg key="clip" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>,
+  ];
+
+  const getDocumentIcon = (documentId: string) => {
+    // Usar el ID del documento para seleccionar un icono de forma consistente
+    const iconIndex = parseInt(documentId) % documentIcons.length;
+    return documentIcons[iconIndex] || documentIcons[0];
   };
 
   const handleView = async (document: Document) => {
@@ -400,7 +425,7 @@ const PublicDocuments: React.FC = () => {
         alert("Error al visualizar el documento");
       }
     } else {
-      console.log("Ver documento:", document);
+    console.log("Ver documento:", document);
     }
   };
 
@@ -414,7 +439,7 @@ const PublicDocuments: React.FC = () => {
         alert("Error al descargar el documento");
       }
     } else {
-      console.log("Descargar documento:", document);
+    console.log("Descargar documento:", document);
     }
   };
 
@@ -447,22 +472,20 @@ const PublicDocuments: React.FC = () => {
         {/* Mantener filtros hardcoded como fallback si no hay tipos dinámicos */}
         {documents.length === 0 && (
           <>
-            <button
-              className={`filter-btn ${
-                activeFilter === DOCUMENT_CATEGORIES.POLITICAS ? "active" : ""
-              }`}
-              onClick={() => setActiveFilter(DOCUMENT_CATEGORIES.POLITICAS)}
-            >
-              {DOCUMENT_CATEGORIES.POLITICAS}
-            </button>
-            <button
-              className={`filter-btn ${
-                activeFilter === DOCUMENT_CATEGORIES.RECURSOS ? "active" : ""
-              }`}
-              onClick={() => setActiveFilter(DOCUMENT_CATEGORIES.RECURSOS)}
-            >
-              {DOCUMENT_CATEGORIES.RECURSOS}
-            </button>
+        <button
+              className={`filter-btn ${activeFilter === DOCUMENT_CATEGORIES.POLITICAS ? "active" : ""
+          }`}
+          onClick={() => setActiveFilter(DOCUMENT_CATEGORIES.POLITICAS)}
+        >
+          {DOCUMENT_CATEGORIES.POLITICAS}
+        </button>
+        <button
+              className={`filter-btn ${activeFilter === DOCUMENT_CATEGORIES.RECURSOS ? "active" : ""
+          }`}
+          onClick={() => setActiveFilter(DOCUMENT_CATEGORIES.RECURSOS)}
+        >
+          {DOCUMENT_CATEGORIES.RECURSOS}
+        </button>
           </>
         )}
       </div>
@@ -474,17 +497,17 @@ const PublicDocuments: React.FC = () => {
             Error: {error}
           </div>
         )}
-        
+
         {/* Loading */}
         {loading && (
           <div style={{ padding: '2rem', textAlign: 'center' }}>
             Cargando documentos...
           </div>
         )}
-        
+
         {/* Lista de documentos */}
         {!loading && (
-          <div className="public-documents-list">
+        <div className="public-documents-list">
             {filteredDocuments.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
                 No se encontraron documentos
@@ -494,7 +517,7 @@ const PublicDocuments: React.FC = () => {
             <div key={document.id} className="public-document-item">
               <div className="public-document-item-header">
                 <div className="public-document-item-icon">
-                  {getDocumentIcon(document.category)}
+                      {getDocumentIcon(document.id)}
                 </div>
 
                 <div className="public-document-item-content">
@@ -554,7 +577,7 @@ const PublicDocuments: React.FC = () => {
             </div>
               ))
             )}
-          </div>
+        </div>
         )}
 
         {/* Sección de ayuda */}

@@ -222,6 +222,15 @@
 .nav-label {
   font-size: 1rem;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-count {
+  font-size: 0.875rem;
+  font-weight: 400;
+  opacity: 0.8;
 }
 
 .sidebar-footer {

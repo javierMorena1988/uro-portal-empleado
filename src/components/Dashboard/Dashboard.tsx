@@ -131,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
             </svg>
           </div>
           <div className="welcome-text">
-            <h1>Bienvenida, {empleadoNombre}</h1>
+            <h1>Bienvenido, {empleadoNombre}</h1>
             <p>{getCurrentDate()}</p>
           </div>
         </div>

@@ -18,19 +18,8 @@ const Payroll: React.FC = () => {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [documentTitle, setDocumentTitle] = useState<string>('');
 
-  // Datos mock de nóminas
-  // Nota: En producción, estos datos vendrían de Therefore con los DocNo reales
-  const payrollData: PayrollItem[] = [
-    { id: '1', month: 'Septiembre', year: 2025, date: '30/09/2025', docNo: 1769621 },
-    { id: '2', month: 'Agosto', year: 2025, date: '31/08/2025', docNo: 1769620 },
-    { id: '3', month: 'Julio', year: 2025, date: '31/07/2025', docNo: 1769619 },
-    { id: '4', month: 'Junio', year: 2025, date: '30/06/2025', docNo: 1769618 },
-    { id: '5', month: 'Mayo', year: 2025, date: '31/05/2025', docNo: 1769617 },
-    { id: '6', month: 'Abril', year: 2025, date: '30/04/2025', docNo: 1769616 },
-    { id: '7', month: 'Marzo', year: 2025, date: '31/03/2025', docNo: 1769615 },
-    { id: '8', month: 'Febrero', year: 2025, date: '28/02/2025', docNo: 1769614 },
-    { id: '9', month: 'Enero', year: 2025, date: '31/01/2025', docNo: 1769613 },
-  ];
+  // Datos de nóminas (vacío hasta que tengamos el endpoint)
+  const payrollData: PayrollItem[] = [];
 
   const handleView = async (payroll: PayrollItem) => {
     if (!payroll.docNo) {
@@ -136,8 +125,39 @@ const Payroll: React.FC = () => {
           <h2 className="payroll-section-title" style={{ margin: 0 }}>Historial de nóminas</h2>
         </div>
         
-        <div className="payroll-list">
-          {payrollData.map((payroll) => (
+        {payrollData.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '3rem 1rem',
+            color: '#6b7280',
+            backgroundColor: '#f9fafb',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <svg 
+              width="48" 
+              height="48" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+              style={{ margin: '0 auto 1rem', opacity: 0.5 }}
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14,2 14,8 20,8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500 }}>
+              No hay nóminas disponibles
+            </p>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', opacity: 0.7 }}>
+              Las nóminas aparecerán aquí una vez que se configure el endpoint
+            </p>
+          </div>
+        ) : (
+          <div className="payroll-list">
+            {payrollData.map((payroll) => (
             <div key={payroll.id} className="payroll-item">
               <div className="payroll-item-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -211,7 +231,8 @@ const Payroll: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Modal para visualizar documento */}
