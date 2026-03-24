@@ -121,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewCh
         <div className="sidebar-header">
           <div className="logo">
             <div className="logo-icon">
-              <img src={urovesaLogo} alt="UROVESA" width="40" height="40" />
+              <img src={urovesaLogo} alt="UROVESA" width="200" height="200" />
             </div>
           </div>
         </div>
