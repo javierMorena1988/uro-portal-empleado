@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks';
+import { getPayrollDocuments, getPublicDocuments } from '../../services/therefore';
 import './Sidebar.css';
 import urovesaLogo from '../../assets/urovesa.png';
 
@@ -15,44 +16,83 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewCh
   const { logout, user } = useAuth();
   const location = useLocation();
   const [documentCount, setDocumentCount] = useState<number | null>(null);
+  const [payrollCount, setPayrollCount] = useState<number | null>(null);
   // Solo mostrar administración para javier.morena@inforges.es
   const userEmail = user?.email || user?.empleado?.Email || '';
   const isAdmin = userEmail.toLowerCase() === 'javier.morena@inforges.es';
 
-  // Leer el contador de documentos desde localStorage
+  // Leer contadores desde localStorage y escuchar actualizaciones
   useEffect(() => {
-    const updateCount = () => {
-      const count = localStorage.getItem('publicDocumentsCount');
-      if (count) {
-        setDocumentCount(parseInt(count, 10));
-      } else {
-        setDocumentCount(null);
-      }
+    const updateCounts = () => {
+      const publicCount = localStorage.getItem('publicDocumentsCount');
+      const payrollStoredCount = localStorage.getItem('payrollDocumentsCount');
+
+      setDocumentCount(publicCount ? parseInt(publicCount, 10) : null);
+      setPayrollCount(payrollStoredCount ? parseInt(payrollStoredCount, 10) : null);
     };
 
     // Leer al montar
-    updateCount();
+    updateCounts();
 
     // Escuchar cambios en localStorage (para otras pestañas)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'publicDocumentsCount') {
-        updateCount();
+      if (e.key === 'publicDocumentsCount' || e.key === 'payrollDocumentsCount') {
+        updateCounts();
       }
     };
 
-    // Escuchar evento personalizado (para la misma pestaña)
-    const handleCustomEvent = (e: CustomEvent<number>) => {
+    // Escuchar eventos personalizados (misma pestaña)
+    const handlePublicDocsCountChange = (e: CustomEvent<number>) => {
       setDocumentCount(e.detail);
     };
 
+    const handlePayrollCountChange = (e: CustomEvent<number>) => {
+      setPayrollCount(e.detail);
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('publicDocumentsCountChanged', handleCustomEvent as EventListener);
+    window.addEventListener('publicDocumentsCountChanged', handlePublicDocsCountChange as EventListener);
+    window.addEventListener('payrollDocumentsCountChanged', handlePayrollCountChange as EventListener);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('publicDocumentsCountChanged', handleCustomEvent as EventListener);
+      window.removeEventListener('publicDocumentsCountChanged', handlePublicDocsCountChange as EventListener);
+      window.removeEventListener('payrollDocumentsCountChanged', handlePayrollCountChange as EventListener);
     };
   }, []);
+
+  // Precargar contadores al iniciar sesión (sin esperar a abrir ninguna pestaña)
+  useEffect(() => {
+    const preloadCounts = async () => {
+      if (!user?.idEmpleado) {
+        setDocumentCount(null);
+        setPayrollCount(null);
+        return;
+      }
+
+      try {
+        const [publicResponse, payrollResponse] = await Promise.all([
+          getPublicDocuments(user.idEmpleado),
+          getPayrollDocuments(user.idEmpleado),
+        ]);
+
+        const publicTotal = publicResponse.success ? (publicResponse.documents?.length ?? 0) : 0;
+        const payrollTotal = payrollResponse.success ? (payrollResponse.documents?.length ?? 0) : 0;
+
+        setDocumentCount(publicTotal);
+        setPayrollCount(payrollTotal);
+        localStorage.setItem('publicDocumentsCount', String(publicTotal));
+        localStorage.setItem('payrollDocumentsCount', String(payrollTotal));
+        window.dispatchEvent(new CustomEvent('publicDocumentsCountChanged', { detail: publicTotal }));
+        window.dispatchEvent(new CustomEvent('payrollDocumentsCountChanged', { detail: payrollTotal }));
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[Sidebar] Error al precargar contadores:', error);
+      }
+    };
+
+    preloadCounts();
+  }, [user?.idEmpleado]);
 
   const menuItems: Array<{
     id: string;
@@ -73,6 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, activeView, onViewCh
     { 
       id: 'payroll', 
       label: 'Nóminas', 
+      count: payrollCount,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>

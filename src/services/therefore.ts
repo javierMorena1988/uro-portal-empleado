@@ -69,6 +69,41 @@ export async function getPublicDocuments(idEmpleado: string | number): Promise<P
   }
 }
 
+/**
+ * Obtiene nóminas para un empleado
+ * @param idEmpleado - ID del empleado
+ * @returns Lista de nóminas
+ */
+export async function getPayrollDocuments(idEmpleado: string | number): Promise<PublicDocumentsResponse> {
+  try {
+    const resp = await fetch(`${API_BASE_URL}/therefore/payrollDocuments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idEmpleado: String(idEmpleado) }),
+    });
+
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({ message: `Error ${resp.status}` }));
+      return {
+        success: false,
+        error: errorData.error || errorData.message || `Error ${resp.status}`,
+      };
+    }
+
+    const data = await resp.json();
+    return {
+      success: true,
+      documents: data.documents || [],
+      debug: data.debug,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
+  }
+}
+
 export interface GetDocumentRequest {
   DocNo: number;
   VersionNo?: number;

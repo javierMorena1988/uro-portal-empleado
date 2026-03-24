@@ -184,7 +184,7 @@ app.post('/api/therefore/publicDocuments', async (req, res) => {
     const requestBody = {
       FullText: '',
       Query: {
-        CategoryNo: 64,
+        CategoryNo: 64, // 74 para nominas
         Conditions: [{
           Condition: String(idEmpleado),
           FieldNoOrName: 'idEmpleado',
@@ -324,6 +324,113 @@ app.post('/api/therefore/publicDocuments', async (req, res) => {
       success: false,
       error: err.message || 'Error al obtener documentos p�blicos',
       details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+  }
+});
+
+// POST /api/therefore/payrollDocuments
+// Obtiene nóminas para un empleado usando ExecuteSingleQuery
+// Body: { idEmpleado: string }
+app.post('/api/therefore/payrollDocuments', async (req, res) => {
+  try {
+    const { idEmpleado } = req.body;
+
+    if (!idEmpleado) {
+      return res.status(400).json({
+        success: false,
+        error: 'idEmpleado es requerido',
+      });
+    }
+
+    const base = process.env.THEREFORE_BASE_URL;
+    if (!base) {
+      return res.status(500).json({
+        success: false,
+        error: 'THEREFORE_BASE_URL no configurado',
+      });
+    }
+
+    const { THEREFORE_USERNAME, THEREFORE_PASSWORD } = process.env;
+    if (!THEREFORE_USERNAME || !THEREFORE_PASSWORD) {
+      return res.status(500).json({
+        success: false,
+        error: 'Credenciales de Therefore no configuradas',
+      });
+    }
+
+    const requestBody = {
+      FullText: '',
+      Query: {
+        CategoryNo: 74, // Categoría de nóminas
+        Conditions: [{
+          Condition: String(idEmpleado),
+          FieldNoOrName: 'idEmpleado',
+          TimeZone: 0,
+        }],
+        FileByColName: '',
+        FileByFieldNo: 0,
+        MaxRows: 100,
+        Mode: 0,
+        OrderByFieldsNoOrNames: [],
+        RowBlockSize: 100,
+        SelectedFieldsNoOrNames: ['nombreDocumento', 'tipoDocumento', 'fechaArchivoDocumento'],
+        GroupByFieldsNoOrNames: [],
+        IsPersonalQuery: false,
+        QueryNo: 2147483647,
+        FullText: '',
+      },
+    };
+
+    const url = joinUrl(base, 'ExecuteSingleQuery');
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!resp.ok) {
+      const errorText = await resp.text().catch(() => 'Error desconocido');
+      return res.status(resp.status).json({
+        success: false,
+        error: errorText,
+        status: resp.status,
+      });
+    }
+
+    const data = await resp.json().catch(() => null);
+
+    let documents = [];
+    if (data && data.QueryResult && data.QueryResult.ResultRows && Array.isArray(data.QueryResult.ResultRows)) {
+      documents = data.QueryResult.ResultRows;
+    } else if (data && Array.isArray(data)) {
+      documents = data;
+    } else if (data && data.Results && Array.isArray(data.Results)) {
+      documents = data.Results;
+    } else if (data && data.Documents && Array.isArray(data.Documents)) {
+      documents = data.Documents;
+    } else if (data && data.Query && data.Query.Results && Array.isArray(data.Query.Results)) {
+      documents = data.Query.Results;
+    } else if (data && typeof data === 'object') {
+      for (const key in data) {
+        if (Array.isArray(data[key])) {
+          documents = data[key];
+          break;
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      documents,
+      debug: process.env.NODE_ENV === 'development' ? {
+        rawResponse: data,
+      } : undefined,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'Error al consultar nóminas en Therefore',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined,
     });
   }
 });

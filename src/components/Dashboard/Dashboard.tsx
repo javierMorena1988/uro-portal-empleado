@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../hooks";
+import { getPayrollDocuments } from "../../services/therefore";
 import "./Dashboard.css";
 
 interface DashboardProps {
@@ -8,6 +9,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
   const { user } = useAuth();
+  const [latestPayrolls, setLatestPayrolls] = useState<Array<{ id: string; title: string; month: string; date: string }>>([]);
   
   // Obtener el nombre del empleado del campo EMPLEADO
   const empleadoNombre: string = (() => {
@@ -41,7 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
     const year = today.getFullYear();
     return `Hoy es ${dayName}, ${day} de ${month} de ${year}`;
   };
-  const handlePayrollClick = (payroll: { id: string; month: string; date: string }) => {
+  const handlePayrollClick = (payroll: { id: string; title: string; month: string; date: string }) => {
     // En el futuro, aquí navegarás a la nómina específica
     console.log('Navegando a nómina:', payroll);
     // Por ahora, navega a la sección de nóminas
@@ -109,8 +111,59 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
     // },
   ];
 
-  // Nóminas - por ahora vacío, se cargarán desde la API cuando esté disponible
-  const latestPayrolls: Array<{ id: string; month: string; date: string }> = [];
+  useEffect(() => {
+    const loadLatestPayrolls = async () => {
+      if (!user?.idEmpleado) {
+        setLatestPayrolls([]);
+        return;
+      }
+
+      try {
+        const response = await getPayrollDocuments(user.idEmpleado);
+        if (!response.success || !response.documents) {
+          setLatestPayrolls([]);
+          return;
+        }
+
+        const normalizeDate = (value: unknown): Date | null => {
+          if (!value) return null;
+          const d = new Date(String(value));
+          return Number.isNaN(d.getTime()) ? null : d;
+        };
+
+        const mapped = response.documents.map((doc: any, index: number) => {
+          const indexValues = Array.isArray(doc.IndexValues) ? doc.IndexValues : [];
+          const rawTitle = indexValues[0] || doc.nombreDocumento || `Documento ${index + 1}`;
+          const rawDate = indexValues[2];
+          const parsedDate = normalizeDate(rawDate);
+
+          return {
+            id: String(doc.DocNo || index + 1),
+            title: String(rawTitle),
+            month: parsedDate
+              ? parsedDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+              : `Documento ${index + 1}`,
+            date: parsedDate
+              ? parsedDate.toLocaleDateString('es-ES')
+              : '',
+            sortTs: parsedDate ? parsedDate.getTime() : 0,
+          };
+        });
+
+        const topThree = mapped
+          .sort((a, b) => b.sortTs - a.sortTs)
+          .slice(0, 3)
+          .map(({ id, title, month, date }) => ({ id, title, month, date }));
+
+        setLatestPayrolls(topThree);
+      } catch (error) {
+        console.error('Error al cargar últimas nóminas:', error);
+        setLatestPayrolls([]);
+      }
+    };
+
+    loadLatestPayrolls();
+  }, [user?.idEmpleado]);
 
   return (
     <div className="dashboard">
@@ -183,8 +236,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
                     onClick={() => handlePayrollClick(payroll)}
                   >
                     <div className="payroll-info">
-                      <h4 className="payroll-month">{payroll.month}</h4>
-                      <p className="payroll-date">{payroll.date}</p>
+                      <h4 className="payroll-month">{payroll.title}</h4>
+                      <p className="payroll-date">Fecha: {payroll.date}{payroll.month ? ` - ${payroll.month}` : ''}</p>
                     </div>
                   </button>
                 ))}

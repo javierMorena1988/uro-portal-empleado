@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { downloadDocument, viewDocument } from '../../services/therefore';
+import React, { useEffect, useState } from 'react';
+import { downloadDocument, getPayrollDocuments, viewDocument } from '../../services/therefore';
+import { useAuth } from '../../hooks/useAuth';
 import './Payroll.css';
 
 interface PayrollItem {
   id: string;
+  title: string;
   month: string;
   year: number;
   date: string;
@@ -11,15 +13,79 @@ interface PayrollItem {
 }
 
 const Payroll: React.FC = () => {
+  const { user } = useAuth();
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
   const [viewError, setViewError] = useState<string | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [documentTitle, setDocumentTitle] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [payrollData, setPayrollData] = useState<PayrollItem[]>([]);
 
-  // Datos de nóminas (vacío hasta que tengamos el endpoint)
-  const payrollData: PayrollItem[] = [];
+  useEffect(() => {
+    const loadPayrollDocuments = async () => {
+      setLoading(true);
+      setDownloadError(null);
+      setViewError(null);
+
+      try {
+        if (!user?.idEmpleado) {
+          setDownloadError('No se pudo obtener el ID del empleado. Inicia sesión de nuevo.');
+          setPayrollData([]);
+          return;
+        }
+
+        const response = await getPayrollDocuments(user.idEmpleado);
+        if (!response.success) {
+          setDownloadError(response.error || 'Error al cargar documentos');
+          setPayrollData([]);
+          return;
+        }
+
+        const docs = response.documents || [];
+        const mappedPayrolls: PayrollItem[] = docs.map((doc: any, index: number) => {
+          const indexValues = Array.isArray(doc.IndexValues) ? doc.IndexValues : [];
+          const rawTitle = indexValues[0] || doc.nombreDocumento || `Documento ${index + 1}`;
+          const rawDate = indexValues[2] || null;
+          const docNo = doc.DocNo ? Number(doc.DocNo) : undefined;
+
+          const parsedDate = rawDate ? new Date(rawDate) : null;
+          const hasValidDate = parsedDate instanceof Date && !Number.isNaN(parsedDate.getTime());
+
+          const dateText = hasValidDate
+            ? parsedDate.toLocaleDateString('es-ES')
+            : new Date().toLocaleDateString('es-ES');
+
+          const monthText = hasValidDate
+            ? parsedDate.toLocaleDateString('es-ES', { month: 'long' })
+            : 'documento';
+
+          const yearValue = hasValidDate ? parsedDate.getFullYear() : new Date().getFullYear();
+
+          return {
+            id: String(docNo || index + 1),
+            title: String(rawTitle),
+            month: monthText,
+            year: yearValue,
+            date: dateText,
+            docNo,
+          };
+        });
+
+        setPayrollData(mappedPayrolls);
+        localStorage.setItem('payrollDocumentsCount', String(mappedPayrolls.length));
+        window.dispatchEvent(new CustomEvent('payrollDocumentsCountChanged', { detail: mappedPayrolls.length }));
+      } catch (error) {
+        setDownloadError(error instanceof Error ? error.message : 'Error al cargar documentos');
+        setPayrollData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPayrollDocuments();
+  }, [user]);
 
   const handleView = async (payroll: PayrollItem) => {
     if (!payroll.docNo) {
@@ -125,7 +191,11 @@ const Payroll: React.FC = () => {
           <h2 className="payroll-section-title" style={{ margin: 0 }}>Historial de nóminas</h2>
         </div>
         
-        {payrollData.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+            Cargando documentos...
+          </div>
+        ) : payrollData.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '3rem 1rem',
@@ -149,10 +219,10 @@ const Payroll: React.FC = () => {
               <line x1="16" y1="17" x2="8" y2="17"/>
             </svg>
             <p style={{ margin: 0, fontSize: '1rem', fontWeight: 500 }}>
-              No hay nóminas disponibles
+              No hay documentos disponibles
             </p>
             <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', opacity: 0.7 }}>
-              Las nóminas aparecerán aquí una vez que se configure el endpoint
+              Prueba más tarde o contacta con RRHH si esperabas ver documentos
             </p>
           </div>
         ) : (
@@ -171,10 +241,10 @@ const Payroll: React.FC = () => {
               
               <div className="payroll-item-content">
                 <h3 className="payroll-item-title">
-                  Nómina {payroll.month} {payroll.year}
+                  {payroll.title}
                 </h3>
                 <p className="payroll-item-date">
-                  Fecha: {payroll.date}
+                  Fecha: {payroll.date} - {payroll.month} {payroll.year}
                 </p>
                 
                 <div className="payroll-item-actions">
