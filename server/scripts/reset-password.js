@@ -25,16 +25,13 @@ function generatePassword() {
   const length = 12;
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
   let password = '';
-  // Asegurar al menos una mayúscula, una minúscula, un número y un símbolo
   password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
   password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
   password += '0123456789'[Math.floor(Math.random() * 10)];
   password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
-  // Completar hasta 12 caracteres
   for (let i = password.length; i < length; i++) {
     password += charset[Math.floor(Math.random() * charset.length)];
   }
-  // Mezclar los caracteres
   return password.split('').sort(() => Math.random() - 0.5).join('');
 }
 

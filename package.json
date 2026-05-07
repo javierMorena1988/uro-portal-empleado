@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "dev:server": "nodemon server/index.js",
+    "dev:server": "nodemon --watch server --ext js,mjs,cjs,json --ignore data/* --ignore .env server/index.js",
     "dev:all": "concurrently \"npm:dev\" \"npm:dev:server\"",
     "test:ldap": "node scripts/test-ldap.js",
     "prepare:deploy": "node scripts/prepare-deployment.js",

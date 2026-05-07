@@ -16,8 +16,9 @@ const __dirname = dirname(__filename);
 // Cargar .env desde la ra�z del proyecto (un nivel arriba de server/)
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
-// Usar mock o LDAP real seg�n configuraci�n
-const useMockAuth = process.env.MOCK_AUTH === 'true';
+// Política actual: no se usa LDAP para gestionar/autenticar usuarios.
+// La autenticación se mantiene en el backend de aplicación.
+const useMockAuth = true;
 
 // eslint-disable-next-line no-console
 console.log('[Config] MOCK_AUTH value:', process.env.MOCK_AUTH);
@@ -78,6 +79,25 @@ console.log('[Auth] authService.setPassword type:', typeof authService.setPasswo
 const app = express();
 const port = process.env.PORT || 5174;
 
+const PASSWORD_POLICY = {
+  minLength: 12,
+  minAgeDays: 365,
+};
+
+function validatePasswordComplexity(password) {
+  if (typeof password !== 'string' || password.length < PASSWORD_POLICY.minLength) {
+    return `La contraseña debe tener al menos ${PASSWORD_POLICY.minLength} caracteres`;
+  }
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasDigit = /\d/.test(password);
+  const hasSymbol = /[^A-Za-z0-9]/.test(password);
+  if (!hasUpper || !hasLower || !hasDigit || !hasSymbol) {
+    return 'La contraseña debe incluir mayúsculas, minúsculas, números y símbolos';
+  }
+  return null;
+}
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
@@ -106,7 +126,7 @@ if (missing.length > 0) {
 // Verificar variables de entorno LDAP (opcional, solo se requiere si se usa LDAP)
 const ldapEnvVars = ['LDAP_URL', 'LDAP_BASE_DN', 'LDAP_ADMIN_DN', 'LDAP_ADMIN_PASSWORD'];
 const missingLdap = ldapEnvVars.filter((k) => !process.env[k]);
-if (missingLdap.length > 0) {
+if (!useMockAuth && missingLdap.length > 0) {
   // eslint-disable-next-line no-console
   console.warn(`[LDAP Service] Missing env vars (LDAP no configurado): ${missingLdap.join(', ')}`);
   // eslint-disable-next-line no-console
@@ -1228,16 +1248,13 @@ app.post('/api/auth/register', async (req, res) => {
       const length = 12;
       const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
       let password = '';
-      // Asegurar al menos una mayúscula, una minúscula, un número y un símbolo
       password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
       password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
       password += '0123456789'[Math.floor(Math.random() * 10)];
       password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
-      // Completar hasta 12 caracteres
       for (let i = password.length; i < length; i++) {
         password += charset[Math.floor(Math.random() * charset.length)];
       }
-      // Mezclar los caracteres
       return password.split('').sort(() => Math.random() - 0.5).join('');
     };
 
@@ -1378,12 +1395,11 @@ app.post('/api/auth/change-password', async (req, res) => {
       });
     }
 
-    // Validar longitud m�nima de contrase�a
-    const minLength = parseInt(process.env.LDAP_PASSWORD_MIN_LENGTH || '8', 10);
-    if (newPassword.length < minLength) {
+    const passwordError = validatePasswordComplexity(newPassword);
+    if (passwordError) {
       return res.status(400).json({
         success: false,
-        error: `La contrase�a debe tener al menos ${minLength} caracteres`,
+        error: passwordError,
       });
     }
 
@@ -1891,12 +1907,11 @@ app.put('/api/admin/users/:username/password', requireAdmin, async (req, res) =>
       });
     }
 
-    // Validar longitud mínima
-    const minLength = parseInt(process.env.LDAP_PASSWORD_MIN_LENGTH || '8', 10);
-    if (newPassword.length < minLength) {
+    const passwordError = validatePasswordComplexity(newPassword);
+    if (passwordError) {
       return res.status(400).json({
         success: false,
-        error: `La contraseña debe tener al menos ${minLength} caracteres`,
+        error: passwordError,
       });
     }
 

@@ -20,6 +20,11 @@ const STORAGE_DIR = path.dirname(STORAGE_FILE);
 
 // Usuarios en memoria (caché)
 const mockUsers = new Map();
+const MAX_FAILED_ATTEMPTS = 5;
+const PASSWORD_MIN_LENGTH = 12;
+const PASSWORD_HISTORY_SIZE = 4;
+const PASSWORD_MAX_AGE_DAYS = 730; // 2 años
+const PASSWORD_MIN_AGE_DAYS = 365; // 1 año
 
 // Usuarios por defecto (solo se usan si el archivo no existe)
 const DEFAULT_USERS = [
@@ -46,6 +51,64 @@ const DEFAULT_USERS = [
   }],
 ];
 
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function daysBetween(isoDateA, isoDateB = nowIso()) {
+  if (!isoDateA) return Number.POSITIVE_INFINITY;
+  const a = new Date(isoDateA);
+  const b = new Date(isoDateB);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return Number.POSITIVE_INFINITY;
+  return Math.floor((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function ensureUserSecurityFields(userData) {
+  return {
+    ...userData,
+    failedLoginAttempts: Number.isInteger(userData.failedLoginAttempts) ? userData.failedLoginAttempts : 0,
+    isLocked: userData.isLocked === true,
+    passwordHistory: Array.isArray(userData.passwordHistory) ? userData.passwordHistory : [],
+    passwordChangedAt: userData.passwordChangedAt || nowIso(),
+    mustChangePassword: userData.mustChangePassword === true,
+  };
+}
+
+function validatePasswordPolicy(password) {
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH) {
+    throw new Error(`La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`);
+  }
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasDigit = /\d/.test(password);
+  const hasSymbol = /[^A-Za-z0-9]/.test(password);
+  if (!hasUpper || !hasLower || !hasDigit || !hasSymbol) {
+    throw new Error('La contraseña debe incluir mayúsculas, minúsculas, números y símbolos');
+  }
+}
+
+function ensurePasswordNotReused(userData, newPassword) {
+  const latestHistory = Array.isArray(userData.passwordHistory) ? userData.passwordHistory : [];
+  const recentlyUsed = [userData.password, ...latestHistory].slice(0, PASSWORD_HISTORY_SIZE);
+  if (recentlyUsed.includes(newPassword)) {
+    throw new Error(`La contraseña no puede repetir ninguna de las últimas ${PASSWORD_HISTORY_SIZE}`);
+  }
+}
+
+function applyNewPassword(userData, newPassword, { mustChangePassword = false } = {}) {
+  const previousHistory = Array.isArray(userData.passwordHistory) ? userData.passwordHistory : [];
+  const updatedHistory = [userData.password, ...previousHistory]
+    .filter(Boolean)
+    .slice(0, PASSWORD_HISTORY_SIZE);
+
+  userData.password = newPassword;
+  userData.passwordHistory = updatedHistory;
+  userData.passwordChangedAt = nowIso();
+  userData.mustChangePassword = mustChangePassword;
+  userData.failedLoginAttempts = 0;
+  userData.isLocked = false;
+}
+
 /**
  * Carga los usuarios desde el archivo de almacenamiento
  */
@@ -66,7 +129,7 @@ async function loadUsersFromFile() {
     // Cargar al Map en memoria
     mockUsers.clear();
     for (const [username, userData] of Object.entries(users)) {
-      mockUsers.set(username, userData);
+      mockUsers.set(username, ensureUserSecurityFields(userData));
       // eslint-disable-next-line no-console
       console.log(`[Mock Auth] Usuario cargado: ${username} (email: ${userData.email})`);
     }
@@ -78,7 +141,7 @@ async function loadUsersFromFile() {
       // Archivo no existe aún, usar usuarios por defecto
       mockUsers.clear();
       for (const [username, userData] of DEFAULT_USERS) {
-        mockUsers.set(username, userData);
+        mockUsers.set(username, ensureUserSecurityFields(userData));
       }
       // Guardar usuarios por defecto
       await saveUsersToFile();
@@ -154,9 +217,28 @@ export async function authenticateUser(username, password) {
     throw new Error('Usuario no encontrado en LDAP');
   }
 
+  if (user.isLocked) {
+    throw new Error('Cuenta bloqueada por seguridad. Contacta con el administrador para restablecer el acceso.');
+  }
+
   if (user.password !== password) {
+    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+    if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+      user.isLocked = true;
+      // eslint-disable-next-line no-console
+      console.error(`[Mock Auth] Usuario bloqueado por ${MAX_FAILED_ATTEMPTS} intentos fallidos: ${normalizedUsername}`);
+    }
+    mockUsers.set(normalizedUsername, user);
+    await saveUsersToFile();
     throw new Error('Credenciales inválidas');
   }
+
+  user.failedLoginAttempts = 0;
+  if (daysBetween(user.passwordChangedAt) > PASSWORD_MAX_AGE_DAYS) {
+    user.mustChangePassword = true;
+  }
+  mockUsers.set(normalizedUsername, user);
+  await saveUsersToFile();
 
   return {
     username: user.username,
@@ -212,14 +294,13 @@ export async function changePassword(username, oldPassword, newPassword) {
     throw new Error('La contraseña actual es incorrecta');
   }
 
-  // Validar longitud mínima
-  if (newPassword.length < 8) {
-    throw new Error('La contraseña debe tener al menos 8 caracteres');
+  if (!user.mustChangePassword && daysBetween(user.passwordChangedAt) < PASSWORD_MIN_AGE_DAYS) {
+    throw new Error(`No se puede cambiar la contraseña antes de ${PASSWORD_MIN_AGE_DAYS} días desde el último cambio`);
   }
 
-  // Actualizar contraseña
-  user.password = newPassword;
-  user.mustChangePassword = false;
+  validatePasswordPolicy(newPassword);
+  ensurePasswordNotReused(user, newPassword);
+  applyNewPassword(user, newPassword, { mustChangePassword: false });
   mockUsers.set(normalizedUsername, user);
   await saveUsersToFile();
 }
@@ -242,12 +323,19 @@ export async function userExists(username) {
  * @param {string} displayName - Nombre completo
  */
 export async function createMockUser(username, password, email, displayName) {
-  mockUsers.set(username, {
-    username,
+  validatePasswordPolicy(password);
+  const normalizedUsername = String(username).trim().toLowerCase();
+  mockUsers.set(normalizedUsername, {
+    username: normalizedUsername,
     password,
     email,
     displayName,
-    dn: `CN=${username},CN=Users,DC=urovesa,DC=com`,
+    dn: `CN=${normalizedUsername},CN=Users,DC=urovesa,DC=com`,
+    failedLoginAttempts: 0,
+    isLocked: false,
+    passwordHistory: [],
+    passwordChangedAt: nowIso(),
+    mustChangePassword: false,
   });
   await saveUsersToFile();
 }
@@ -313,14 +401,9 @@ export async function adminChangePassword(username, newPassword) {
     throw new Error('Usuario no encontrado');
   }
 
-  // Validar longitud mínima
-  if (newPassword.length < 8) {
-    throw new Error('La contraseña debe tener al menos 8 caracteres');
-  }
-
-  // Actualizar contraseña
-  user.password = newPassword;
-  user.mustChangePassword = true;
+  validatePasswordPolicy(newPassword);
+  ensurePasswordNotReused(user, newPassword);
+  applyNewPassword(user, newPassword, { mustChangePassword: true });
   mockUsers.set(normalizedUsername, user);
   await saveUsersToFile();
 }
@@ -338,18 +421,15 @@ export async function setPassword(username, password, email, displayName = null)
   await new Promise(resolve => setTimeout(resolve, 200));
   const normalizedUsername = String(username).trim().toLowerCase();
 
-  // Validar longitud mínima
-  if (password.length < 8) {
-    throw new Error('La contraseña debe tener al menos 8 caracteres');
-  }
+  validatePasswordPolicy(password);
 
   // Si el usuario ya existe, actualizar su contraseña
   if (mockUsers.has(normalizedUsername)) {
     const user = mockUsers.get(normalizedUsername);
-    user.password = password;
+    ensurePasswordNotReused(user, password);
+    applyNewPassword(user, password, { mustChangePassword: true });
     if (email) user.email = email;
     if (displayName) user.displayName = displayName;
-    user.mustChangePassword = true;
     mockUsers.set(normalizedUsername, user);
   } else {
     // Si no existe, crear nuevo usuario
@@ -360,6 +440,10 @@ export async function setPassword(username, password, email, displayName = null)
       displayName: displayName || normalizedUsername,
       dn: `CN=${normalizedUsername},CN=Users,DC=urovesa,DC=com`,
       mustChangePassword: true,
+      failedLoginAttempts: 0,
+      isLocked: false,
+      passwordHistory: [],
+      passwordChangedAt: nowIso(),
     });
   }
   

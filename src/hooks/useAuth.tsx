@@ -20,7 +20,7 @@ interface AuthContextType {
   login: (usernameOrEmail: string, password: string, twoFactorCode?: string) => Promise<authService.LoginResponse>;
   logout: () => void;
   isLoading: boolean;
-  changePassword: (username: string, oldPassword: string, newPassword: string) => Promise<boolean>;
+  changePassword: (username: string, oldPassword: string, newPassword: string) => Promise<authService.ChangePasswordResponse>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -128,13 +128,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     username: string,
     oldPassword: string,
     newPassword: string
-  ): Promise<boolean> => {
+  ): Promise<authService.ChangePasswordResponse> => {
     try {
       const response = await authService.changePassword(username, oldPassword, newPassword);
-      return response.success;
+      return response;
     } catch (error) {
       console.error('Change password error:', error);
-      return false;
+      return {
+        success: false,
+        error: 'Error de conexión con el servidor',
+      };
     }
   };
 

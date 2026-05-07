@@ -9,7 +9,13 @@ import './ChangePasswordFirstLogin.css';
 const schema = z.object({
   username: z.string().min(1, 'Usuario requerido'),
   oldPassword: z.string().min(1, 'Contraseña actual requerida'),
-  newPassword: z.string().min(8, 'La nueva contraseña debe tener al menos 8 caracteres'),
+  newPassword: z
+    .string()
+    .min(12, 'La nueva contraseña debe tener al menos 12 caracteres')
+    .regex(/[A-Z]/, 'La nueva contraseña debe incluir al menos una mayúscula')
+    .regex(/[a-z]/, 'La nueva contraseña debe incluir al menos una minúscula')
+    .regex(/\d/, 'La nueva contraseña debe incluir al menos un número')
+    .regex(/[^A-Za-z0-9]/, 'La nueva contraseña debe incluir al menos un símbolo'),
   confirmNewPassword: z.string().min(1, 'Confirma la nueva contraseña'),
 }).refine((data) => data.newPassword === data.confirmNewPassword, {
   message: 'Las contraseñas no coinciden',
@@ -49,9 +55,9 @@ const ChangePasswordFirstLogin: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setError('');
     setSuccess('');
-    const ok = await changePassword(data.username, data.oldPassword, data.newPassword);
-    if (!ok) {
-      setError('No se pudo cambiar la contraseña. Revisa la contraseña actual y vuelve a intentarlo.');
+    const response = await changePassword(data.username, data.oldPassword, data.newPassword);
+    if (!response.success) {
+      setError(response.error || 'No se pudo cambiar la contraseña.');
       return;
     }
     setSuccess('Contraseña cambiada correctamente. Ahora puedes iniciar sesión con la nueva contraseña.');

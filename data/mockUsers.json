@@ -1,9 +1,16 @@
 {
   "javier.morena": {
     "username": "javier.morena",
-    "password": "w%D@4&7bIrPg",
+    "password": "Inforges@urovesa2026",
     "email": "javier.morena@inforges.es",
-    "displayName": "Javier Morena",
-    "dn": "CN=javier.morena,CN=Users,DC=urovesa,DC=com"
+    "displayName": "BRAIS CARNOTA MUÑIZ",
+    "dn": "CN=javier.morena,CN=Users,DC=urovesa,DC=com",
+    "mustChangePassword": false,
+    "failedLoginAttempts": 0,
+    "isLocked": false,
+    "passwordHistory": [
+      "4Qp6@s$yVbrd"
+    ],
+    "passwordChangedAt": "2026-05-07T10:47:48.052Z"
   }
 }
