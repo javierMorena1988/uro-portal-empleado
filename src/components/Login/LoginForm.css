@@ -277,6 +277,32 @@
   line-height: 1.6;
 }
 
+.authenticator-link {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  margin: 1.5rem 0;
+}
+
+.manual-secret {
+  padding: 0.875rem;
+  margin: 0 0 1rem;
+  background-color: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  color: #1e3a8a;
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.copy-secret-button {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .login-card,

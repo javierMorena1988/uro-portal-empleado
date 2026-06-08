@@ -13,9 +13,18 @@ interface Setup2FAProps {
 const Setup2FA: React.FC<Setup2FAProps> = ({ username, password, onSetupComplete, onCancel }) => {
   const [step, setStep] = useState<'credentials' | 'qr' | 'verify'>('credentials');
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const isMobile = React.useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const userAgent = window.navigator.userAgent || '';
+    return window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(userAgent);
+  }, []);
 
   const handleStartSetup = async () => {
     setLoading(true);
@@ -23,16 +32,36 @@ const Setup2FA: React.FC<Setup2FAProps> = ({ username, password, onSetupComplete
     
     try {
       const response = await setup2FA(username, password);
-      if (response.success && response.qrCode) {
-        setQrCode(response.qrCode);
+      if (response.success && (response.qrCode || response.otpauth_url || response.secret)) {
+        setQrCode(response.qrCode || null);
+        setSecret(response.secret || null);
+        setOtpauthUrl(response.otpauth_url || null);
         setStep('qr');
       } else {
-        setError(response.error || 'Error al generar código QR');
+        setError(response.error || 'Error al configurar autenticación de doble factor');
       }
     } catch (error) {
       setError('Error al conectar con el servidor');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCopySecret = async () => {
+    if (!secret) return;
+    setCopied(false);
+
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopied(true);
+    } catch {
+      const tempInput = document.createElement('input');
+      tempInput.value = secret;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      setCopied(true);
     }
   };
 
@@ -105,9 +134,52 @@ const Setup2FA: React.FC<Setup2FAProps> = ({ username, password, onSetupComplete
     return (
       <div className="login-container">
         <div className="login-box setup-box">
-          <h2>📱 Escanea el Código QR</h2>
+          <h2>{isMobile ? 'Configura 2FA en tu móvil' : '📱 Escanea el Código QR'}</h2>
           
-          {qrCode ? (
+          {isMobile ? (
+            <>
+              <p className="setup-description">
+                Como estás usando el móvil, abre directamente tu app de autenticación o copia la clave manual.
+              </p>
+
+              {otpauthUrl && (
+                <a
+                  href={otpauthUrl}
+                  className="login-button authenticator-link"
+                >
+                  Abrir app de autenticación
+                </a>
+              )}
+
+              {secret && (
+                <div className="setup-instructions-box">
+                  <h3>Clave manual</h3>
+                  <p className="manual-secret">{secret}</p>
+                  <button
+                    type="button"
+                    onClick={handleCopySecret}
+                    className="cancel-button copy-secret-button"
+                  >
+                    {copied ? 'Clave copiada' : 'Copiar clave'}
+                  </button>
+                  <ol>
+                    <li>Abre Google Authenticator, Microsoft Authenticator o una app compatible.</li>
+                    <li>Elige añadir cuenta manualmente.</li>
+                    <li>Pega la clave anterior.</li>
+                    <li>Después pulsa continuar e introduce el código de 6 dígitos.</li>
+                  </ol>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setStep('verify')}
+                className="login-button"
+              >
+                Continuar
+              </button>
+            </>
+          ) : qrCode ? (
             <>
               <div className="qr-code-container-setup">
                 <img src={qrCode} alt="QR Code 2FA" className="qr-code-image-setup" />

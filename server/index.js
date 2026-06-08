@@ -1095,16 +1095,31 @@ app.post('/api/auth/login', async (req, res) => {
       }
     }
     
-    // Errores de autenticaci�n (credenciales inv�lidas)
-    if (error.message && (
-      error.message.includes('Credenciales inv�lidas') || 
-      error.message.includes('Usuario no encontrado') ||
-      error.message.includes('InvalidCredentialsError') ||
+    // Cuenta bloqueada por seguridad (tras umbral de intentos)
+    if (error.message && error.message.includes('Cuenta bloqueada por seguridad')) {
+      return res.status(423).json({
+        success: false,
+        error: 'Cuenta bloqueada por seguridad. Contacta con el administrador para restablecer el acceso.',
+      });
+    }
+
+    // Errores de autenticación (credenciales inválidas)
+    // Nota: contemplamos variantes con/sin acentos para evitar problemas de encoding.
+    const errorMessage = String(error.message || '');
+    const normalizedErrorMessage = errorMessage
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    if (
+      normalizedErrorMessage.includes('credenciales invalidas') ||
+      normalizedErrorMessage.includes('usuario no encontrado') ||
+      normalizedErrorMessage.includes('invalidcredentialserror') ||
       error.code === 49
-    )) {
+    ) {
       return res.status(401).json({
         success: false,
-        error: 'Credenciales inv�lidas',
+        error: 'Credenciales inválidas',
         ...(isLdapMode && { 
           details: errorDetails,
           // Informaci�n para el equipo de backend
@@ -1422,9 +1437,15 @@ app.post('/api/auth/change-password', async (req, res) => {
       });
     }
 
-    // Errores de pol�ticas de contrase�a
-    if (error.message.includes('pol�ticas de seguridad') || 
-        error.message.includes('requisitos de complejidad')) {
+    // Errores de políticas de contraseña / reglas de seguridad
+    if (
+      error.message.includes('políticas de seguridad') ||
+      error.message.includes('requisitos de complejidad') ||
+      error.message.includes('al menos 12 caracteres') ||
+      error.message.includes('mayúsculas, minúsculas, números y símbolos') ||
+      error.message.includes('no puede repetir ninguna de las últimas') ||
+      error.message.includes('No se puede cambiar la contraseña antes de')
+    ) {
       return res.status(400).json({
         success: false,
         error: error.message,
