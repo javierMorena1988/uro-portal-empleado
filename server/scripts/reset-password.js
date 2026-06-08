@@ -20,19 +20,9 @@ dotenv.config({ path: envPath });
 const MOCK_USERS_FILE = join(__dirname, '../../data/mockUsers.json');
 const DATA_DIR = dirname(MOCK_USERS_FILE);
 
-// Función para generar contraseña segura
+// Contraseña temporal numérica de 4 dígitos
 function generatePassword() {
-  const length = 12;
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-  let password = '';
-  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
-  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
-  password += '0123456789'[Math.floor(Math.random() * 10)];
-  password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
-  for (let i = password.length; i < length; i++) {
-    password += charset[Math.floor(Math.random() * charset.length)];
-  }
-  return password.split('').sort(() => Math.random() - 0.5).join('');
+  return String(Math.floor(1000 + Math.random() * 9000));
 }
 
 async function resetPassword(username, newPassword = null) {

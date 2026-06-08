@@ -22,6 +22,7 @@ const STORAGE_DIR = path.dirname(STORAGE_FILE);
 const mockUsers = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
 const PASSWORD_MIN_LENGTH = 12;
+const TEMPORARY_PASSWORD_LENGTH = 4;
 const PASSWORD_HISTORY_SIZE = 4;
 const PASSWORD_MAX_AGE_DAYS = 730; // 2 años
 const PASSWORD_MIN_AGE_DAYS = 365; // 1 año
@@ -72,6 +73,16 @@ function ensureUserSecurityFields(userData) {
     passwordChangedAt: userData.passwordChangedAt || nowIso(),
     mustChangePassword: userData.mustChangePassword === true,
   };
+}
+
+function isTemporaryPassword(password) {
+  return typeof password === 'string' && new RegExp(`^\\d{${TEMPORARY_PASSWORD_LENGTH}}$`).test(password);
+}
+
+function validateTemporaryPassword(password) {
+  if (!isTemporaryPassword(password)) {
+    throw new Error(`La contraseña temporal debe ser numérica de ${TEMPORARY_PASSWORD_LENGTH} dígitos`);
+  }
 }
 
 function validatePasswordPolicy(password) {
@@ -185,8 +196,29 @@ async function saveUsersToFile() {
 loadUsersFromFile();
 
 /**
+ * Resuelve un identificador (email o username) al usuario interno
+ * @param {string} identifier - Email o nombre de usuario
+ * @returns {{ username: string, user: object } | null}
+ */
+export function resolveUserIdentifier(identifier) {
+  const normalized = String(identifier).trim().toLowerCase();
+
+  if (mockUsers.has(normalized)) {
+    return { username: normalized, user: mockUsers.get(normalized) };
+  }
+
+  for (const [username, user] of mockUsers.entries()) {
+    if (user.email && String(user.email).trim().toLowerCase() === normalized) {
+      return { username, user };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Autentica un usuario (mock)
- * @param {string} username - Nombre de usuario
+ * @param {string} username - Nombre de usuario o email
  * @param {string} password - Contraseña
  * @returns {Promise<Object>} Información del usuario autenticado
  */
@@ -194,8 +226,7 @@ export async function authenticateUser(username, password) {
   // Simular latencia de red
   await new Promise(resolve => setTimeout(resolve, 200));
 
-  // Normalizar username a minúsculas
-  const normalizedUsername = String(username).trim().toLowerCase();
+  const normalizedIdentifier = String(username).trim().toLowerCase();
 
   // Si el Map está vacío, intentar recargar el archivo
   if (mockUsers.size === 0) {
@@ -205,11 +236,13 @@ export async function authenticateUser(username, password) {
   }
 
   // eslint-disable-next-line no-console
-  console.log('[Mock Auth] Buscando usuario:', normalizedUsername, '(original:', username, ')');
+  console.log('[Mock Auth] Buscando usuario:', normalizedIdentifier, '(original:', username, ')');
   // eslint-disable-next-line no-console
   console.log('[Mock Auth] Usuarios disponibles:', Array.from(mockUsers.keys()));
 
-  const user = mockUsers.get(normalizedUsername);
+  const resolved = resolveUserIdentifier(normalizedIdentifier);
+  const normalizedUsername = resolved ? resolved.username : normalizedIdentifier;
+  const user = resolved ? resolved.user : null;
 
   if (!user) {
     // eslint-disable-next-line no-console
@@ -283,12 +316,12 @@ export async function searchUser(username) {
 export async function changePassword(username, oldPassword, newPassword) {
   await new Promise(resolve => setTimeout(resolve, 200));
 
-  const normalizedUsername = String(username).trim().toLowerCase();
-  const user = mockUsers.get(normalizedUsername);
-
-  if (!user) {
+  const resolved = resolveUserIdentifier(username);
+  if (!resolved) {
     throw new Error('Usuario no encontrado en LDAP');
   }
+
+  const { username: normalizedUsername, user } = resolved;
 
   if (user.password !== oldPassword) {
     throw new Error('La contraseña actual es incorrecta');
@@ -401,7 +434,11 @@ export async function adminChangePassword(username, newPassword) {
     throw new Error('Usuario no encontrado');
   }
 
-  validatePasswordPolicy(newPassword);
+  if (isTemporaryPassword(newPassword)) {
+    validateTemporaryPassword(newPassword);
+  } else {
+    validatePasswordPolicy(newPassword);
+  }
   ensurePasswordNotReused(user, newPassword);
   applyNewPassword(user, newPassword, { mustChangePassword: true });
   mockUsers.set(normalizedUsername, user);
@@ -421,7 +458,7 @@ export async function setPassword(username, password, email, displayName = null)
   await new Promise(resolve => setTimeout(resolve, 200));
   const normalizedUsername = String(username).trim().toLowerCase();
 
-  validatePasswordPolicy(password);
+  validateTemporaryPassword(password);
 
   // Si el usuario ya existe, actualizar su contraseña
   if (mockUsers.has(normalizedUsername)) {

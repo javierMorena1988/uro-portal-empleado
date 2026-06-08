@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { useBlockBrowserBack } from '../../hooks';
 import './Layout.css';
 
 interface LayoutProps {
@@ -11,6 +12,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  useBlockBrowserBack();
 
   const handleMenuToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -30,7 +32,12 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange }) =
       />
       
       <div className="main-content">
-        <Header onMenuToggle={handleMenuToggle} isSidebarOpen={isSidebarOpen} />
+        <Header
+          onMenuToggle={handleMenuToggle}
+          isSidebarOpen={isSidebarOpen}
+          activeView={activeView}
+          onViewChange={onViewChange}
+        />
         
         <main className="content">
           {children}

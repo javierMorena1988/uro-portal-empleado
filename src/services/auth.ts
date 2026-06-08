@@ -14,6 +14,7 @@ export interface LoginResponse {
   token?: string;
   mustChangePassword?: boolean;
   username?: string;
+  email?: string;
   user?: {
     username: string;
     email: string;

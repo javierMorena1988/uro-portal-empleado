@@ -20,7 +20,36 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #004186;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background: #e5e7eb;
+}
+
+.back-button-text {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .back-button-text {
+    display: inline;
+  }
 }
 
 .header-logo {

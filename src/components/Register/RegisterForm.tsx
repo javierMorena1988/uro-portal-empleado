@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { register } from "../../services/auth";
+import { useBlockBrowserBack } from "../../hooks";
 import { useNavigate, Link } from "react-router-dom";
 import "./RegisterForm.css";
 import urovesaLogo from "../../assets/urovesa.png";
@@ -15,6 +16,7 @@ type RegisterData = z.infer<typeof registerSchema>;
 
 const RegisterForm: React.FC = () => {
   const navigate = useNavigate();
+  useBlockBrowserBack();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

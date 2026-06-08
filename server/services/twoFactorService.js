@@ -11,6 +11,15 @@ import QRCode from 'qrcode';
  * @param {string} issuer - Nombre de la aplicación (ej: "Portal Empleado UROVESA")
  * @returns {Object} Objeto con el secreto y la URL para generar el QR
  */
+export function buildOtpAuthUrl(username, secret, issuer = 'Portal Empleado UROVESA') {
+  return speakeasy.otpauthURL({
+    secret,
+    label: `${issuer} (${username})`,
+    issuer,
+    encoding: 'base32',
+  });
+}
+
 export function generateSecret(username, issuer = 'Portal Empleado UROVESA') {
   const secret = speakeasy.generateSecret({
     name: `${issuer} (${username})`,

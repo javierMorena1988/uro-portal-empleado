@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getUsers, getUser, changeUserPassword, resetUserPassword, deleteUser, User } from '../../services/admin';
+import { getUsers, changeUserPassword, resetUserPassword, deleteUser, type User } from '../../services/admin';
 import './UserManagement.css';
 
 const UserManagement: React.FC = () => {

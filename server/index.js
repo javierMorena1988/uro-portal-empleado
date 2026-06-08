@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { generateSecret, generateQRCode, verifyToken } from './services/twoFactorService.js';
+import { generateSecret, generateQRCode, verifyToken, buildOtpAuthUrl } from './services/twoFactorService.js';
 import { saveSecret, getSecret, is2FAEnabled, enable2FA, disable2FA, hasSecret } from './services/twoFactorStorage.js';
 import { findEmpleadoByEmail } from './services/empleadosService.js';
 import { sendPasswordEmail } from './services/emailService.js';
@@ -83,6 +83,11 @@ const PASSWORD_POLICY = {
   minLength: 12,
   minAgeDays: 365,
 };
+
+/** Contraseña temporal numérica de 4 dígitos (registro y reset admin) */
+function generateTemporaryPassword() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
 
 function validatePasswordComplexity(password) {
   if (typeof password !== 'string' || password.length < PASSWORD_POLICY.minLength) {
@@ -891,25 +896,28 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Normalizar username: si viene como email, extraer la parte antes del @
-    let cleanUsername = String(username).trim().toLowerCase();
-    let userEmail = String(username).trim().toLowerCase();
-    
-    // Si viene como email, guardar el email completo y extraer username
-    if (cleanUsername.includes('@')) {
-      userEmail = cleanUsername; // Mantener email completo
-      cleanUsername = cleanUsername.split('@')[0];
-      // eslint-disable-next-line no-console
-      console.log('[Login] Username viene como email, extrayendo:', cleanUsername);
-    } else {
-      // Si no viene como email, construir email asumiendo dominio
-      userEmail = `${cleanUsername}@urovesa.com`;
+    const userEmail = String(username).trim().toLowerCase();
+
+    if (!userEmail.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Debes iniciar sesión con tu correo electrónico corporativo',
+      });
     }
-    
+
+    let cleanUsername = userEmail.split('@')[0];
+    if (useMockAuth) {
+      const { resolveUserIdentifier } = await import('./services/mockAuthService.js');
+      const resolved = resolveUserIdentifier(userEmail);
+      if (resolved) {
+        cleanUsername = resolved.username;
+      }
+    }
+
     // eslint-disable-next-line no-console
-    console.log('[Login] Username normalizado:', cleanUsername);
+    console.log('[Login] Email:', userEmail);
     // eslint-disable-next-line no-console
-    console.log('[Login] Email a verificar:', userEmail);
+    console.log('[Login] Username interno:', cleanUsername);
 
     // PASO 1: Verificar que el email est� en la lista de empleados con acceso
     // eslint-disable-next-line no-console
@@ -949,7 +957,7 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
     
-    const user = await authenticateUser(cleanUsername, password);
+    const user = await authenticateUser(userEmail, password);
     // eslint-disable-next-line no-console
     console.log('[Login] Usuario autenticado:', user.username);
 
@@ -961,7 +969,8 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(200).json({
         success: false,
         mustChangePassword: true,
-        username: cleanUsername,
+        username: user.email || userEmail,
+        email: user.email || userEmail,
         message: 'Debes cambiar tu contraseña en el primer acceso.',
       });
     }
@@ -974,26 +983,18 @@ app.post('/api/auth/login', async (req, res) => {
     
     // Si tiene un secreto guardado (incluso si no est� habilitado), primero intentar con c�digo
     // Esto permite que usuarios que ya escanearon el QR puedan usar el c�digo sin reconfigurar
-    if (hasStoredSecret && !twoFactorCode) {
+    if (!has2FA && !twoFactorCode) {
       // eslint-disable-next-line no-console
-      console.log('[Login] Usuario tiene secreto guardado, requiere c�digo 2FA');
+      console.log('[Login] Requiere completar configuracion 2FA');
       return res.status(200).json({
         success: false,
-        requiresTwoFactor: true,
-        message: 'Se requiere c�digo de autenticaci�n de doble factor',
+        requires2FASetup: true,
+        message: hasStoredSecret
+          ? 'Debes completar la configuracion de autenticacion de doble factor.'
+          : '2FA no configurado. Debe configurarse antes del primer acceso.',
       });
     }
 
-    // Si no tiene secreto guardado, debe configurarlo primero
-    if (!hasStoredSecret) {
-      return res.status(403).json({
-        success: false,
-        requires2FASetup: true,
-        error: 'Debes configurar la autenticaci�n de doble factor antes de poder iniciar sesi�n. Por favor, contacta con el administrador o configura 2FA desde tu perfil.',
-        message: '2FA no configurado. Debe configurarse antes del primer acceso.',
-      });
-    }
-    
     // Si tiene 2FA habilitado pero no tiene c�digo, pedirlo
     if (has2FA && !twoFactorCode) {
       // eslint-disable-next-line no-console
@@ -1258,22 +1259,7 @@ app.post('/api/auth/register', async (req, res) => {
       }
     }
 
-    // PASO 4: Generar contraseña temporal segura
-    const generatePassword = () => {
-      const length = 12;
-      const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-      let password = '';
-      password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
-      password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
-      password += '0123456789'[Math.floor(Math.random() * 10)];
-      password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
-      for (let i = password.length; i < length; i++) {
-        password += charset[Math.floor(Math.random() * charset.length)];
-      }
-      return password.split('').sort(() => Math.random() - 0.5).join('');
-    };
-
-    const temporaryPassword = generatePassword();
+    const temporaryPassword = generateTemporaryPassword();
     
     // eslint-disable-next-line no-console
     console.log('[Register] Contraseña temporal generada');
@@ -1509,23 +1495,25 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
       });
     }
 
-    // Normalizar username igual que en el login
-    // Si viene como email, extraer la parte antes del @
-    let cleanUsername = String(username).trim().toLowerCase();
-    if (cleanUsername.includes('@')) {
-      cleanUsername = cleanUsername.split('@')[0];
-      // eslint-disable-next-line no-console
-      console.log('[2FA Setup] Username viene como email, extrayendo:', cleanUsername);
+    const userIdentifier = String(username).trim().toLowerCase();
+    let cleanUsername = userIdentifier.includes('@') ? userIdentifier.split('@')[0] : userIdentifier;
+
+    if (useMockAuth) {
+      const { resolveUserIdentifier } = await import('./services/mockAuthService.js');
+      const resolved = resolveUserIdentifier(userIdentifier);
+      if (resolved) {
+        cleanUsername = resolved.username;
+      }
     }
-    
+
     // eslint-disable-next-line no-console
-    console.log('[2FA Setup] Username normalizado:', cleanUsername);
+    console.log('[2FA Setup] Username interno:', cleanUsername);
 
     // Si se proporciona password, validar credenciales LDAP primero
     // Esto permite configurar 2FA antes del primer login
     if (password) {
       try {
-        const user = await authenticateUser(cleanUsername, password);
+        const user = await authenticateUser(userIdentifier, password);
         // eslint-disable-next-line no-console
         console.log('[2FA Setup] Credenciales LDAP validadas para:', user.username);
       } catch (error) {
@@ -1547,10 +1535,16 @@ app.post('/api/auth/2fa/setup', async (req, res) => {
     }
     
     // Si tiene un secreto guardado pero no est� habilitado, sugerir usar el c�digo existente
-    if (hasSecret(cleanUsername)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Ya tienes un c�digo 2FA configurado. Por favor, ingresa el c�digo de 6 d�gitos de tu aplicaci�n de autenticaci�n. Si no tienes acceso, contacta al administrador.',
+    if (hasSecret(cleanUsername) && !is2FAEnabled(cleanUsername)) {
+      const userSecret = getSecret(cleanUsername);
+      const otpauth_url = buildOtpAuthUrl(cleanUsername, userSecret.secret);
+      const qrCode = await generateQRCode(otpauth_url);
+      return res.json({
+        success: true,
+        secret: userSecret.secret,
+        qrCode,
+        otpauth_url,
+        resumed: true,
       });
     }
 
@@ -1596,17 +1590,19 @@ app.post('/api/auth/2fa/verify', async (req, res) => {
       });
     }
 
-    // Normalizar username igual que en el login
-    // Si viene como email, extraer la parte antes del @
-    let cleanUsername = String(username).trim().toLowerCase();
-    if (cleanUsername.includes('@')) {
-      cleanUsername = cleanUsername.split('@')[0];
-      // eslint-disable-next-line no-console
-      console.log('[2FA Verify] Username viene como email, extrayendo:', cleanUsername);
+    const userIdentifier = String(username).trim().toLowerCase();
+    let cleanUsername = userIdentifier.includes('@') ? userIdentifier.split('@')[0] : userIdentifier;
+
+    if (useMockAuth) {
+      const { resolveUserIdentifier } = await import('./services/mockAuthService.js');
+      const resolved = resolveUserIdentifier(userIdentifier);
+      if (resolved) {
+        cleanUsername = resolved.username;
+      }
     }
-    
+
     // eslint-disable-next-line no-console
-    console.log('[2FA Verify] Username normalizado:', cleanUsername);
+    console.log('[2FA Verify] Username interno:', cleanUsername);
 
     const userSecret = getSecret(cleanUsername);
     if (!userSecret) {
@@ -1985,22 +1981,7 @@ app.post('/api/admin/users/:username/reset-password', requireAdmin, async (req, 
     const { username } = req.params;
     const { sendEmail = true } = req.body;
 
-    // Generar contraseña temporal segura
-    const generatePassword = () => {
-      const length = 12;
-      const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-      let password = '';
-      password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
-      password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
-      password += '0123456789'[Math.floor(Math.random() * 10)];
-      password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
-      for (let i = password.length; i < length; i++) {
-        password += charset[Math.floor(Math.random() * charset.length)];
-      }
-      return password.split('').sort(() => Math.random() - 0.5).join('');
-    };
-
-    const temporaryPassword = generatePassword();
+    const temporaryPassword = generateTemporaryPassword();
 
     // Obtener información del usuario para el email
     let userEmail = null;

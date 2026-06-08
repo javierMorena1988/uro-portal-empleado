@@ -3,11 +3,11 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useAuth } from '../../hooks';
+import { useAuth, useBlockBrowserBack } from '../../hooks';
 import './ChangePasswordFirstLogin.css';
 
 const schema = z.object({
-  username: z.string().min(1, 'Usuario requerido'),
+  email: z.string().email('Introduce un correo electrónico válido').min(1, 'Correo requerido'),
   oldPassword: z.string().min(1, 'Contraseña actual requerida'),
   newPassword: z
     .string()
@@ -28,10 +28,12 @@ const ChangePasswordFirstLogin: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { changePassword } = useAuth();
+  useBlockBrowserBack();
   const [error, setError] = React.useState<string>('');
   const [success, setSuccess] = React.useState<string>('');
 
-  const state = (location.state as { username?: string; oldPassword?: string } | null) ?? null;
+  const state = (location.state as { email?: string; username?: string; oldPassword?: string } | null) ?? null;
+  const initialEmail = state?.email || state?.username || '';
 
   const {
     register,
@@ -41,7 +43,7 @@ const ChangePasswordFirstLogin: React.FC = () => {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      username: state?.username || '',
+      email: initialEmail,
       oldPassword: state?.oldPassword || '',
       newPassword: '',
       confirmNewPassword: '',
@@ -49,19 +51,18 @@ const ChangePasswordFirstLogin: React.FC = () => {
   });
 
   React.useEffect(() => {
-    if (state?.username) setValue('username', state.username);
-  }, [setValue, state?.username]);
+    if (initialEmail) setValue('email', initialEmail);
+  }, [setValue, initialEmail]);
 
   const onSubmit = async (data: FormData) => {
     setError('');
     setSuccess('');
-    const response = await changePassword(data.username, data.oldPassword, data.newPassword);
+    const response = await changePassword(data.email, data.oldPassword, data.newPassword);
     if (!response.success) {
       setError(response.error || 'No se pudo cambiar la contraseña.');
       return;
     }
     setSuccess('Contraseña cambiada correctamente. Ahora puedes iniciar sesión con la nueva contraseña.');
-    // Volver al login después de un momento
     setTimeout(() => navigate('/login'), 1200);
   };
 
@@ -75,9 +76,15 @@ const ChangePasswordFirstLogin: React.FC = () => {
 
         <form onSubmit={handleSubmit(onSubmit)} className="cpfl-form">
           <div className="cpfl-group">
-            <label className="cpfl-label">Usuario</label>
-            <input className="cpfl-input" placeholder="usuario" {...register('username')} />
-            {errors.username && <p className="cpfl-error">{errors.username.message}</p>}
+            <label className="cpfl-label">Correo electrónico</label>
+            <input
+              className="cpfl-input"
+              type="email"
+              placeholder="tu.email@urovesa.com"
+              {...register('email')}
+              readOnly={!!initialEmail}
+            />
+            {errors.email && <p className="cpfl-error">{errors.email.message}</p>}
           </div>
 
           <div className="cpfl-group">
@@ -115,4 +122,3 @@ const ChangePasswordFirstLogin: React.FC = () => {
 };
 
 export default ChangePasswordFirstLogin;
-

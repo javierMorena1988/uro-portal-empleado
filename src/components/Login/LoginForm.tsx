@@ -2,16 +2,17 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "../../hooks";
+import { useAuth, useBlockBrowserBack } from "../../hooks";
 import { useNavigate, Link } from "react-router-dom";
 import { MESSAGES } from "../../constants";
 import OtpInput from "react-otp-input";
 import Setup2FA from "./Setup2FA";
+import { OTP_INPUT_STYLE, renderNumericOtpInput, sanitizeOtpValue } from "./otpInputConfig";
 import "./LoginForm.css";
 import urovesaLogo from "../../assets/urovesa.png";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Usuario o email requerido"),
+  email: z.string().email("Introduce un correo electrónico válido").min(1, "Correo requerido"),
   password: z.string().min(1, "Contraseña requerida"),
   twoFactorCode: z.string().optional(),
 });
@@ -21,11 +22,12 @@ type LoginData = z.infer<typeof loginSchema>;
 const LoginForm: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  useBlockBrowserBack();
   const [error, setError] = React.useState("");
   const [requiresTwoFactor, setRequiresTwoFactor] = React.useState(false);
   const [requires2FASetup, setRequires2FASetup] = React.useState(false);
   const [twoFactorCode, setTwoFactorCode] = React.useState("");
-  const [username, setUsername] = React.useState("");
+  const [userEmail, setUserEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
 
   const {
@@ -36,48 +38,45 @@ const LoginForm: React.FC = () => {
     resolver: zodResolver(loginSchema),
   });
 
+  const handleOtpChange = (value: string) => {
+    setTwoFactorCode(sanitizeOtpValue(value));
+  };
+
   const onSubmit = async (data: LoginData) => {
     setError("");
     
     try {
-      // Si ya tenemos código 2FA, intentar login con él
       if (requiresTwoFactor && twoFactorCode) {
-        const response = await login(data.username, data.password, twoFactorCode);
+        const response = await login(data.email, data.password, twoFactorCode);
         if (response.success) {
           navigate("/");
         } else {
           setError(response.error || "Código de autenticación inválido");
-          setTwoFactorCode(""); // Limpiar código para reintentar
+          setTwoFactorCode("");
         }
         return;
       }
 
-      // Primer intento de login (sin código 2FA)
-      const response = await login(data.username, data.password);
+      const response = await login(data.email, data.password);
       
       if (response.mustChangePassword) {
-        // Priorizar siempre cambio de contraseña sobre cualquier flujo de 2FA
-        const cleanUsername = (response.username || data.username).includes('@')
-          ? (response.username || data.username).split('@')[0]
-          : (response.username || data.username);
-        navigate('/change-password', { state: { username: cleanUsername, oldPassword: data.password } });
+        const email = response.email || response.username || data.email;
+        navigate('/change-password', { state: { email, oldPassword: data.password } });
         return;
       } else if (response.requires2FASetup) {
-        // Usuario no tiene 2FA configurado - mostrar pantalla de configuración
-        setError(""); // Limpiar cualquier error previo
+        setError("");
         setRequires2FASetup(true);
-        setUsername(data.username);
+        setUserEmail(data.email);
         setPassword(data.password);
         return;
       } else if (response.requiresTwoFactor) {
-        // Usuario tiene 2FA habilitado, pedir código
         setRequiresTwoFactor(true);
-        setUsername(data.username);
+        setUserEmail(data.email);
         setPassword(data.password);
       } else if (response.success) {
         navigate("/");
       } else {
-        setError(response.error || "Usuario o contraseña incorrectos");
+        setError(response.error || "Correo o contraseña incorrectos");
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -85,43 +84,37 @@ const LoginForm: React.FC = () => {
     }
   };
 
-  // Si requiere configuración de 2FA, mostrar componente de setup
   if (requires2FASetup) {
     return (
       <Setup2FA
-        username={username}
+        username={userEmail}
         password={password}
+        allowCancel={false}
         onSetupComplete={async (verifiedCode: string) => {
-          // Después de configurar 2FA, hacer login automáticamente con el código que acaba de verificar
           setRequires2FASetup(false);
           setTwoFactorCode(verifiedCode);
           
-          // Hacer login automáticamente con el código 2FA que acaba de verificar
           try {
-            const response = await login(username, password, verifiedCode);
+            const response = await login(userEmail, password, verifiedCode);
             if (response.success) {
               navigate("/");
             } else if (response.mustChangePassword) {
-              // Forzar cambio de contraseña tras configurar 2FA
-              navigate('/change-password', { state: { username, oldPassword: password } });
+              navigate('/change-password', { state: { email: userEmail, oldPassword: password } });
             } else {
-              // Si requiere 2FA, mantener el formulario para introducir el código manualmente
               if (response.requiresTwoFactor) {
                 setRequiresTwoFactor(true);
               }
               setError(response.error || "Error al completar el login");
-              setTwoFactorCode(""); // Limpiar código si falla
+              setTwoFactorCode("");
             }
           } catch (error) {
             console.error('Login error:', error);
             setError("Error al conectar con el servidor");
-            setTwoFactorCode(""); // Limpiar código si falla
+            setTwoFactorCode("");
           }
         }}
         onCancel={() => {
-          setRequires2FASetup(false);
-          setUsername("");
-          setPassword("");
+          setRequires2FASetup(true);
         }}
       />
     );
@@ -141,16 +134,17 @@ const LoginForm: React.FC = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="login-form">
           <div className="form-group">
             <label className="form-label">
-              Usuario o Email
+              Correo electrónico
             </label>
             <input
-              type="text"
-              placeholder="usuario o tu.email@empresa.com"
-              {...register("username")}
+              type="email"
+              placeholder="tu.email@urovesa.com"
+              {...register("email")}
               className="form-input"
+              autoComplete="email"
             />
-            {errors.username && (
-              <p className="form-error">{errors.username.message}</p>
+            {errors.email && (
+              <p className="form-error">{errors.email.message}</p>
             )}
           </div>
 
@@ -163,6 +157,7 @@ const LoginForm: React.FC = () => {
               placeholder="••••••••"
               {...register("password")}
               className="form-input"
+              autoComplete="current-password"
             />
             {errors.password && (
               <p className="form-error">{errors.password.message}</p>
@@ -177,23 +172,16 @@ const LoginForm: React.FC = () => {
               <div className="otp-input-container">
                 <OtpInput
                   value={twoFactorCode}
-                  onChange={setTwoFactorCode}
+                  onChange={handleOtpChange}
                   numInputs={6}
                   renderSeparator={<span>-</span>}
-                  renderInput={(props) => <input {...props} />}
-                  inputStyle={{
-                    width: "3rem",
-                    height: "3rem",
-                    margin: "0 0.25rem",
-                    fontSize: "1.25rem",
-                    borderRadius: "4px",
-                    border: "1px solid #ccc",
-                    textAlign: "center",
-                  }}
+                  renderInput={renderNumericOtpInput}
+                  inputStyle={OTP_INPUT_STYLE}
+                  shouldAutoFocus
                 />
               </div>
               <p className="form-hint">
-                Ingresa el código de 6 dígitos de tu aplicación de autenticación
+                Introduce solo números: el código de 6 dígitos de tu app de autenticación
               </p>
             </div>
           )}

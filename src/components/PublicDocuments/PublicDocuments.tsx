@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { MESSAGES, DOCUMENT_CATEGORIES, DOCUMENT_ACTIONS } from "../../constants";
-import { getPublicDocuments, getDictionaryInfo } from "../../services/therefore";
+import { getPublicDocuments, getDictionaryInfo, viewDocument } from "../../services/therefore";
 import { useAuth } from "../../hooks/useAuth";
 import "./PublicDocuments.css";
 
@@ -25,6 +25,10 @@ const PublicDocuments: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [documentTypes, setDocumentTypes] = useState<Record<number, string>>({});
   const [dictionaryId, setDictionaryId] = useState<number | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [viewError, setViewError] = useState<string | null>(null);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [documentTitle, setDocumentTitle] = useState<string>("");
   const { user } = useAuth();
 
   // Cargar tipos de documento desde Therefore cuando tengamos el dictionaryId
@@ -411,21 +415,35 @@ const PublicDocuments: React.FC = () => {
     return documentIcons[iconIndex] || documentIcons[0];
   };
 
+  const handleCloseModal = () => {
+    if (documentUrl) {
+      window.URL.revokeObjectURL(documentUrl);
+      setDocumentUrl(null);
+      setDocumentTitle("");
+    }
+  };
+
   const handleView = async (document: Document) => {
-    if (document.DocNo) {
-      try {
-        const { viewDocument } = await import("../../services/therefore");
-        const blob = await viewDocument(document.DocNo);
-        const url = window.URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        // Limpiar el URL después de un tiempo
-        setTimeout(() => window.URL.revokeObjectURL(url), 100);
-      } catch (err) {
-        console.error("Error al visualizar documento:", err);
-        alert("Error al visualizar el documento");
-      }
-    } else {
-    console.log("Ver documento:", document);
+    if (!document.DocNo) {
+      setViewError("No se encontró el número de documento");
+      setTimeout(() => setViewError(null), 5000);
+      return;
+    }
+
+    setViewing(document.id);
+    setViewError(null);
+
+    try {
+      const blob = await viewDocument(document.DocNo);
+      const url = window.URL.createObjectURL(blob);
+      setDocumentUrl(url);
+      setDocumentTitle(document.title);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Error al visualizar el documento";
+      setViewError(errorMessage);
+      setTimeout(() => setViewError(null), 8000);
+    } finally {
+      setViewing(null);
     }
   };
 
@@ -491,10 +509,9 @@ const PublicDocuments: React.FC = () => {
       </div>
 
       <div className="public-documents-content">
-        {/* Mensaje de error */}
-        {error && (
+        {(error || viewError) && (
           <div style={{ padding: '1rem', background: '#fee', color: '#c33', borderRadius: '4px', marginBottom: '1rem' }}>
-            Error: {error}
+            {error ? `Error: ${error}` : viewError}
           </div>
         )}
 
@@ -540,6 +557,7 @@ const PublicDocuments: React.FC = () => {
                 <button
                   className="public-document-action-btn public-document-view-btn"
                   onClick={() => handleView(document)}
+                  disabled={viewing === document.id}
                 >
                   <svg
                     width="16"
@@ -552,7 +570,7 @@ const PublicDocuments: React.FC = () => {
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
-                  {DOCUMENT_ACTIONS.VIEW}
+                  {viewing === document.id ? "Cargando..." : DOCUMENT_ACTIONS.VIEW}
                 </button>
 
                 <button
@@ -606,6 +624,33 @@ const PublicDocuments: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {documentUrl && (
+        <div className="doc-modal-overlay" onClick={handleCloseModal}>
+          <div className="doc-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="doc-modal-header">
+              <h3 className="doc-modal-title">{documentTitle}</h3>
+              <button
+                className="doc-modal-close"
+                onClick={handleCloseModal}
+                aria-label="Cerrar"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="doc-modal-body">
+              <iframe
+                src={documentUrl}
+                className="doc-modal-iframe"
+                title={documentTitle}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

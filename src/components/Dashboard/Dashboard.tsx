@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../hooks";
-import { getPayrollDocuments } from "../../services/therefore";
+import { getPayrollDocuments, getPublicDocuments } from "../../services/therefore";
 import "./Dashboard.css";
 
 interface DashboardProps {
@@ -10,6 +10,8 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
   const { user } = useAuth();
   const [latestPayrolls, setLatestPayrolls] = useState<Array<{ id: string; title: string; month: string; date: string }>>([]);
+  const [payrollCount, setPayrollCount] = useState<number | null>(null);
+  const [publicDocsCount, setPublicDocsCount] = useState<number | null>(null);
   
   // Obtener el nombre del empleado del campo EMPLEADO
   const empleadoNombre: string = (() => {
@@ -50,10 +52,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
     onViewChange('payroll');
   };
 
+  const formatCountLabel = (title: string, count: number | null) =>
+    count !== null ? `${title} (${count})` : title;
+
   const quickAccessItems = [
     {
       id: "payroll",
-      title: "Nóminas",
+      title: formatCountLabel("Nóminas", payrollCount),
       description: "Consulta y descarga tus nóminas mensuales",
       icon: (
         <svg
@@ -74,7 +79,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
     },
     {
       id: "public-docs",
-      title: "Documentación Laboral",
+      title: formatCountLabel("Documentación Laboral", publicDocsCount),
       description: "Políticas, calendarios y recursos de la empresa",
       icon: (
         <svg
@@ -112,14 +117,49 @@ const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
   ];
 
   useEffect(() => {
+    const updateCountsFromStorage = () => {
+      const payrollStored = localStorage.getItem('payrollDocumentsCount');
+      const publicStored = localStorage.getItem('publicDocumentsCount');
+      if (payrollStored) setPayrollCount(parseInt(payrollStored, 10));
+      if (publicStored) setPublicDocsCount(parseInt(publicStored, 10));
+    };
+
+    updateCountsFromStorage();
+
+    const onPayrollCount = (e: Event) => setPayrollCount((e as CustomEvent<number>).detail);
+    const onPublicCount = (e: Event) => setPublicDocsCount((e as CustomEvent<number>).detail);
+
+    window.addEventListener('payrollDocumentsCountChanged', onPayrollCount);
+    window.addEventListener('publicDocumentsCountChanged', onPublicCount);
+
+    return () => {
+      window.removeEventListener('payrollDocumentsCountChanged', onPayrollCount);
+      window.removeEventListener('publicDocumentsCountChanged', onPublicCount);
+    };
+  }, []);
+
+  useEffect(() => {
     const loadLatestPayrolls = async () => {
       if (!user?.idEmpleado) {
         setLatestPayrolls([]);
+        setPayrollCount(null);
+        setPublicDocsCount(null);
         return;
       }
 
       try {
-        const response = await getPayrollDocuments(user.idEmpleado);
+        const [response, publicResponse] = await Promise.all([
+          getPayrollDocuments(user.idEmpleado),
+          getPublicDocuments(user.idEmpleado),
+        ]);
+
+        const payrollTotal = response.success ? (response.documents?.length ?? 0) : 0;
+        const publicTotal = publicResponse.success ? (publicResponse.documents?.length ?? 0) : 0;
+        setPayrollCount(payrollTotal);
+        setPublicDocsCount(publicTotal);
+        localStorage.setItem('payrollDocumentsCount', String(payrollTotal));
+        localStorage.setItem('publicDocumentsCount', String(publicTotal));
+
         if (!response.success || !response.documents) {
           setLatestPayrolls([]);
           return;

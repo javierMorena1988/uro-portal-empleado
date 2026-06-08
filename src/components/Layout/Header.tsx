@@ -6,13 +6,30 @@ import urovesaLogo from '../../assets/urovesa.png';
 interface HeaderProps {
   onMenuToggle: () => void;
   isSidebarOpen: boolean;
+  activeView?: string;
+  onViewChange?: (view: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuToggle, isSidebarOpen }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuToggle, isSidebarOpen, activeView = 'dashboard', onViewChange }) => {
   const { logout } = useAuth();
+  const showBackButton = activeView !== 'dashboard' && activeView !== 'admin' && !!onViewChange;
+
   return (
     <header className="header">
       <div className="header-left">
+        {showBackButton && (
+          <button
+            type="button"
+            className="back-button"
+            onClick={() => onViewChange?.('dashboard')}
+            aria-label="Volver atrás"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15,18 9,12 15,6" />
+            </svg>
+            <span className="back-button-text">Volver atrás</span>
+          </button>
+        )}
         <button 
           className="menu-toggle"
           onClick={onMenuToggle}
