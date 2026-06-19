@@ -1,0 +1,140 @@
+.auth-modal-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-modal-stepper-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.auth-modal-stepper-item::before {
+  content: '';
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  background: #cbd5e1;
+  border: 2px solid #94a3b8;
+}
+
+.auth-modal-stepper-item--active {
+  color: #004186;
+  font-weight: 600;
+}
+
+.auth-modal-stepper-item--active::before {
+  background: #004186;
+  border-color: #004186;
+}
+
+.auth-modal-section {
+  margin-bottom: 1.5rem;
+}
+
+.auth-modal-section:last-child {
+  margin-bottom: 0;
+}
+
+.auth-modal-section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+.auth-modal-section p {
+  margin: 0 0 0.5rem;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.auth-modal-section ul,
+.auth-modal-section ol {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  color: #374151;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.auth-modal-section li {
+  margin-bottom: 0.35rem;
+}
+
+.auth-modal-note {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #eff6ff;
+  border-left: 4px solid #004186;
+  border-radius: 0 6px 6px 0;
+  color: #1e40af;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.auth-modal-store-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.auth-modal-store-link {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 1px solid #004186;
+  border-radius: 6px;
+  color: #004186;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+}
+
+.auth-modal-store-link:hover {
+  background: #eff6ff;
+}
+
+.auth-modal-help-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #004186;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-modal-help-link:hover {
+  color: #002d5c;
+}
+
+.auth-modal-footer-btn {
+  padding: 0.625rem 1.25rem;
+  background: #004186;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.auth-modal-footer-btn:hover {
+  background: #003366;
+}

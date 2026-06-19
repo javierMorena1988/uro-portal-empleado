@@ -1,0 +1,118 @@
+.pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: #e5e7eb;
+}
+
+.pdf-viewer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.pdf-viewer-toolbar button {
+  min-width: 2.75rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #111827;
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.pdf-viewer-toolbar button:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.pdf-viewer-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pdf-viewer-zoom-label {
+  min-width: 4.5rem !important;
+  font-size: 0.875rem !important;
+}
+
+.pdf-viewer-hint {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.pdf-viewer-scroll {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+  padding: 0.5rem;
+  min-height: 0;
+}
+
+.pdf-viewer-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: max-content;
+  min-width: 100%;
+  margin: 0 auto;
+}
+
+.pdf-viewer-page {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.pdf-viewer-status {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.pdf-viewer-status--error {
+  color: #dc2626;
+}
+
+@media (min-width: 769px) {
+  .pdf-viewer-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .pdf-viewer-scroll {
+    padding: 0.25rem;
+  }
+
+  .pdf-viewer-toolbar button {
+    min-width: 3rem;
+    height: 2.75rem;
+  }
+
+  .pdf-viewer-page {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+}

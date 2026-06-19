@@ -23,6 +23,7 @@
     "jsonwebtoken": "^9.0.2",
     "ldapjs": "^3.0.7",
     "nodemailer": "^8.0.1",
+    "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.1",

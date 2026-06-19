@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { MESSAGES, DOCUMENT_CATEGORIES, DOCUMENT_ACTIONS } from "../../constants";
 import { getPublicDocuments, getDictionaryInfo, viewDocument } from "../../services/therefore";
 import { useAuth } from "../../hooks/useAuth";
+import PdfViewer from "../common/PdfViewer";
 import "./PublicDocuments.css";
 
 interface Document {
@@ -642,11 +643,7 @@ const PublicDocuments: React.FC = () => {
               </button>
             </div>
             <div className="doc-modal-body">
-              <iframe
-                src={documentUrl}
-                className="doc-modal-iframe"
-                title={documentTitle}
-              />
+              <PdfViewer url={documentUrl} title={documentTitle} />
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getUsers, changeUserPassword, resetUserPassword, deleteUser, type User } from '../../services/admin';
+import PasswordInput from '../common/PasswordInput';
 import './UserManagement.css';
 
 const UserManagement: React.FC = () => {
@@ -210,15 +211,13 @@ const UserManagement: React.FC = () => {
                 {action === 'change' && (
                   <div className="form-group">
                     <label>Nueva Contraseña:</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Mínimo 8 caracteres"
+                      placeholder="Mínimo 12 caracteres"
                     />
                     <label>Confirmar Contraseña:</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Repite la contraseña"

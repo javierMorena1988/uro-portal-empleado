@@ -7,8 +7,11 @@ import { useNavigate, Link } from "react-router-dom";
 import { MESSAGES } from "../../constants";
 import OtpInput from "react-otp-input";
 import Setup2FA from "./Setup2FA";
-import { OTP_INPUT_STYLE, renderNumericOtpInput, sanitizeOtpValue } from "./otpInputConfig";
+import PasswordInput from "../common/PasswordInput";
+import { OTP_INPUT_STYLE, OtpSeparator, renderNumericOtpInput, sanitizeOtpValue } from "./otpInputConfig";
+import AuthenticatorLoginHelpModal from "./AuthenticatorLoginHelpModal";
 import "./LoginForm.css";
+import "./AuthenticatorModals.css";
 import urovesaLogo from "../../assets/urovesa.png";
 
 const loginSchema = z.object({
@@ -29,6 +32,7 @@ const LoginForm: React.FC = () => {
   const [twoFactorCode, setTwoFactorCode] = React.useState("");
   const [userEmail, setUserEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [showLoginHelp, setShowLoginHelp] = React.useState(false);
 
   const {
     register,
@@ -152,11 +156,10 @@ const LoginForm: React.FC = () => {
             <label className="form-label">
               {MESSAGES.LOGIN.PASSWORD_PLACEHOLDER}
             </label>
-            <input
-              type="password"
+            <PasswordInput
               placeholder="••••••••"
               {...register("password")}
-              className="form-input"
+              inputClassName="form-input"
               autoComplete="current-password"
             />
             {errors.password && (
@@ -174,15 +177,22 @@ const LoginForm: React.FC = () => {
                   value={twoFactorCode}
                   onChange={handleOtpChange}
                   numInputs={6}
-                  renderSeparator={<span>-</span>}
+                  renderSeparator={<OtpSeparator />}
                   renderInput={renderNumericOtpInput}
                   inputStyle={OTP_INPUT_STYLE}
                   shouldAutoFocus
                 />
               </div>
               <p className="form-hint">
-                Introduce solo números: el código de 6 dígitos de tu app de autenticación
+                Introduce solo números: el código de 6 dígitos de Microsoft Authenticator
               </p>
+              <button
+                type="button"
+                className="auth-modal-help-link"
+                onClick={() => setShowLoginHelp(true)}
+              >
+                ¿Cómo obtener el código?
+              </button>
             </div>
           )}
 
@@ -207,6 +217,11 @@ const LoginForm: React.FC = () => {
           </div>
         </form>
       </div>
+
+      <AuthenticatorLoginHelpModal
+        open={showLoginHelp}
+        onClose={() => setShowLoginHelp(false)}
+      />
     </div>
   );
 };

@@ -6,7 +6,7 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, readdirSync, statSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, statSync, readFileSync, writeFileSync, rmSync } from 'fs';
 import { join, relative, dirname } from 'path';
 
 const PROJECT_ROOT = process.cwd();
@@ -47,7 +47,7 @@ if (!existsSync(join(PROJECT_ROOT, 'dist'))) {
 // Crear directorio de despliegue
 if (existsSync(DEPLOY_DIR)) {
   console.log('📁 Limpiando directorio de despliegue anterior...');
-  execSync(`rm -rf "${DEPLOY_DIR}"`, { stdio: 'inherit' });
+  rmSync(DEPLOY_DIR, { recursive: true, force: true });
 }
 mkdirSync(DEPLOY_DIR, { recursive: true });
 

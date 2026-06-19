@@ -59,11 +59,11 @@ function createTransporter() {
 /**
  * Envía un correo con la contraseña temporal al usuario
  * @param {string} to - Email del destinatario
- * @param {string} username - Nombre de usuario
+ * @param {string} loginEmail - Correo electrónico de acceso (completo, con @)
  * @param {string} password - Contraseña temporal
  * @returns {Promise<void>}
  */
-export async function sendPasswordEmail(to, username, password) {
+export async function sendPasswordEmail(to, loginEmail, password) {
   try {
     const transporter = createTransporter();
     const smtpUser = process.env.SMTP_USER || '';
@@ -175,12 +175,12 @@ export async function sendPasswordEmail(to, username, password) {
             <p>Se ha creado tu cuenta en el Portal Empleado de UROVESA. A continuación encontrarás tus credenciales de acceso:</p>
             
             <div class="password-box">
-              <strong>Usuario:</strong> ${username}<br>
+              <strong>Correo electrónico:</strong> ${loginEmail}<br>
               <strong>Contraseña:</strong> ${password}
             </div>
 
             <div class="warning">
-              <strong>⚠️ Importante:</strong> Por seguridad, te recomendamos cambiar esta contraseña después de tu primer acceso.
+              <strong>⚠️ Importante:</strong> Debes iniciar sesión con tu <strong>correo electrónico completo</strong> (incluido @ y dominio). Por seguridad, cambia esta contraseña después de tu primer acceso.
             </div>
 
             <p>Puedes acceder al portal en:</p>
@@ -202,10 +202,10 @@ Bienvenido al Portal Empleado UROVESA
 
 Se ha creado tu cuenta en el Portal Empleado. Tus credenciales de acceso son:
 
-Usuario: ${username}
+Correo electrónico: ${loginEmail}
 Contraseña: ${password}
 
-⚠️ IMPORTANTE: Por seguridad, te recomendamos cambiar esta contraseña después de tu primer acceso.
+⚠️ IMPORTANTE: Inicia sesión con tu correo electrónico completo (incluido @ y dominio). Cambia esta contraseña después de tu primer acceso.
 
 Puedes acceder al portal en: ${portalUrl}
 

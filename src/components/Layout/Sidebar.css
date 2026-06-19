@@ -140,8 +140,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #ffffff;
   margin-right: 1rem;
+}
+
+.user-icon-mobile svg {
+  color: #ffffff;
+  stroke: #ffffff;
 }
 
 .user-name-mobile {
@@ -211,6 +216,20 @@
   background-color: var(--primary-color);
   color: white;
   border-radius: var(--radius);
+}
+
+.nav-link.active .nav-label,
+.nav-link.active .nav-count {
+  color: white;
+}
+
+.nav-link.active .nav-icon {
+  color: #ffffff;
+}
+
+.nav-link.active .nav-icon svg {
+  color: #ffffff;
+  stroke: #ffffff;
 }
 
 .nav-icon {

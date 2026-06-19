@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { downloadDocument, getPayrollDocuments, viewDocument } from '../../services/therefore';
 import { useAuth } from '../../hooks/useAuth';
+import PdfViewer from '../common/PdfViewer';
 import './Payroll.css';
 
 interface PayrollItem {
@@ -323,11 +324,7 @@ const Payroll: React.FC = () => {
               </button>
             </div>
             <div className="payroll-modal-body">
-              <iframe 
-                src={documentUrl} 
-                className="payroll-modal-iframe"
-                title={documentTitle}
-              />
+              <PdfViewer url={documentUrl} title={documentTitle} />
             </div>
           </div>
         </div>

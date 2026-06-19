@@ -385,6 +385,11 @@
   margin: 1.5rem 0;
 }
 
+.otp-separator {
+  color: #9ca3af;
+  user-select: none;
+}
+
 .setup-actions {
   display: flex;
   gap: 1rem;

@@ -2,8 +2,12 @@ import React, { useState } from 'react';
 import OtpInput from 'react-otp-input';
 import { setup2FA, verify2FA } from '../../services/auth';
 import { useBlockBrowserBack } from '../../hooks';
-import { OTP_INPUT_STYLE, renderNumericOtpInput, sanitizeOtpValue } from './otpInputConfig';
+import { OTP_INPUT_STYLE, OtpSeparator, renderNumericOtpInput, sanitizeOtpValue } from './otpInputConfig';
+import { isMobileDevice } from './authenticatorMobile';
+import AuthenticatorMobileGuide from './AuthenticatorMobileGuide';
+import AuthenticatorSetupModal from './AuthenticatorSetupModal';
 import './LoginForm.css';
+import './AuthenticatorModals.css';
 
 interface Setup2FAProps {
   username: string;
@@ -29,12 +33,9 @@ const Setup2FA: React.FC<Setup2FAProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
 
-  const isMobile = React.useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    const userAgent = window.navigator.userAgent || '';
-    return window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(userAgent);
-  }, []);
+  const isMobile = React.useMemo(() => isMobileDevice(), []);
 
   const applySetupResponse = (response: {
     qrCode?: string | null;
@@ -84,11 +85,6 @@ const Setup2FA: React.FC<Setup2FAProps> = ({
     }
   };
 
-  const handleOpenAuthenticator = () => {
-    if (!otpauthUrl) return;
-    window.location.href = otpauthUrl;
-  };
-
   const handleOtpChange = (value: string) => {
     setVerificationCode(sanitizeOtpValue(value));
   };
@@ -117,99 +113,89 @@ const Setup2FA: React.FC<Setup2FAProps> = ({
     }
   };
 
+  const setupGuideModal = (
+    <AuthenticatorSetupModal
+      open={showSetupGuide}
+      onClose={() => setShowSetupGuide(false)}
+    />
+  );
+
   if (step === 'credentials') {
     return (
-      <div className="login-container">
-        <div className="login-box">
-          <h2>Configurar autenticación de doble factor</h2>
-          <p className="setup-description">
-            Para acceder a la aplicación, debes configurar la autenticación de doble factor (2FA).
-            Este paso es obligatorio y no se puede omitir.
-          </p>
+      <>
+        <div className="login-container">
+          <div className="login-box">
+            <h2>Configurar autenticación de doble factor</h2>
+            <p className="setup-description">
+              Para acceder a la aplicación, debes configurar la autenticación de doble factor (2FA)
+              con Microsoft Authenticator. Este paso es obligatorio y no se puede omitir.
+            </p>
 
-          {error && <div className="form-error-message">{error}</div>}
+            {error && <div className="form-error-message">{error}</div>}
 
-          <div className="setup-info">
-            <p><strong>Correo:</strong> {username}</p>
-            <p>Las credenciales ya han sido validadas. Pulsa el botón para continuar con la configuración.</p>
-          </div>
+            <div className="setup-info">
+              <p><strong>Correo:</strong> {username}</p>
+              <p>Las credenciales ya han sido validadas. Pulsa el botón para continuar con la configuración.</p>
+            </div>
 
-          <div className="setup-actions">
             <button
               type="button"
-              onClick={handleStartSetup}
-              disabled={loading}
-              className="login-button"
+              className="auth-modal-help-link"
+              onClick={() => setShowSetupGuide(true)}
             >
-              {loading ? 'Preparando configuración...' : 'Comenzar configuración'}
+              Ver guía paso a paso
             </button>
-            {allowCancel && (
+
+            <div className="setup-actions">
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={handleStartSetup}
                 disabled={loading}
-                className="cancel-button"
+                className="login-button"
               >
-                Cancelar
+                {loading ? 'Preparando configuración...' : 'Comenzar configuración'}
               </button>
-            )}
+              {allowCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  disabled={loading}
+                  className="cancel-button"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+        {setupGuideModal}
+      </>
     );
   }
 
   if (step === 'qr') {
     return (
-      <div className="login-container">
-        <div className="login-box setup-box">
-          <h2>{isMobile ? 'Configura 2FA en tu móvil' : 'Escanea el código QR'}</h2>
+      <>
+        <div className="login-container">
+          <div className="login-box setup-box">
+            <h2>{isMobile ? 'Configura 2FA en tu móvil' : 'Escanea el código QR'}</h2>
+
+            <button
+              type="button"
+              className="auth-modal-help-link"
+              onClick={() => setShowSetupGuide(true)}
+            >
+              Ver guía paso a paso
+            </button>
 
           {isMobile ? (
-            <>
-              <p className="setup-description">
-                Sigue estos pasos para añadir tu cuenta a Google Authenticator u otra app compatible.
-              </p>
-
-              {otpauthUrl && (
-                <button
-                  type="button"
-                  onClick={handleOpenAuthenticator}
-                  className="login-button authenticator-link"
-                >
-                  Abrir Google Authenticator
-                </button>
-              )}
-
-              {secret && (
-                <div className="setup-instructions-box">
-                  <h3>¿No se abre la app? Usa la clave manual</h3>
-                  <p className="manual-secret">{secret}</p>
-                  <button
-                    type="button"
-                    onClick={handleCopySecret}
-                    className="cancel-button copy-secret-button"
-                  >
-                    {copied ? 'Clave copiada al portapapeles' : 'Copiar clave al portapapeles'}
-                  </button>
-                  <ol className="setup-help-steps">
-                    <li>Pulsa <strong>Copiar clave al portapapeles</strong> (arriba).</li>
-                    <li>Abre <strong>Google Authenticator</strong> (o Microsoft Authenticator).</li>
-                    <li>Pulsa el <strong>+</strong> y elige <strong>Introducir clave de configuración</strong>.</li>
-                    <li>Pega la clave copiada y confirma el nombre de la cuenta.</li>
-                    <li>Vuelve aquí, pulsa <strong>Continuar</strong> e introduce el código de 6 dígitos.</li>
-                  </ol>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setStep('verify')}
-                className="login-button"
-              >
-                Continuar
-              </button>
-            </>
+            <AuthenticatorMobileGuide
+              otpauthUrl={otpauthUrl}
+              secret={secret}
+              copied={copied}
+              onCopySecret={handleCopySecret}
+              onContinue={() => setStep('verify')}
+            />
           ) : qrCode ? (
             <>
               <div className="qr-code-container-setup">
@@ -219,7 +205,7 @@ const Setup2FA: React.FC<Setup2FAProps> = ({
               <div className="setup-instructions-box">
                 <h3>Instrucciones:</h3>
                 <ol>
-                  <li>Abre Google Authenticator, Microsoft Authenticator o cualquier app compatible en tu móvil</li>
+                  <li>Abre <strong>Microsoft Authenticator</strong> en tu móvil</li>
                   <li>Escanea el código QR que aparece arriba</li>
                   <li>Anota el código de 6 dígitos que aparece en tu app</li>
                   <li>Haz clic en &quot;Continuar&quot; e ingresa el código para verificar</li>
@@ -237,23 +223,26 @@ const Setup2FA: React.FC<Setup2FAProps> = ({
           ) : (
             <p>Cargando código QR...</p>
           )}
+          </div>
         </div>
-      </div>
+        {setupGuideModal}
+      </>
     );
   }
 
   return (
+    <>
     <div className="login-container">
       <div className="login-box setup-box">
         <h2>Verifica el código</h2>
-        <p>Introduce solo números: el código de 6 dígitos que aparece en tu app de autenticación.</p>
+        <p>Introduce solo números: el código de 6 dígitos que aparece en Microsoft Authenticator.</p>
 
         <div className="otp-input-container">
           <OtpInput
             value={verificationCode}
             onChange={handleOtpChange}
             numInputs={6}
-            renderSeparator={<span>-</span>}
+            renderSeparator={<OtpSeparator />}
             renderInput={renderNumericOtpInput}
             inputStyle={OTP_INPUT_STYLE}
             shouldAutoFocus
@@ -282,6 +271,8 @@ const Setup2FA: React.FC<Setup2FAProps> = ({
         </div>
       </div>
     </div>
+    {setupGuideModal}
+    </>
   );
 };
 

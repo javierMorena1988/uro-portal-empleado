@@ -1320,7 +1320,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // PASO 6: Enviar correo con la contraseña
     try {
-      await sendPasswordEmail(userEmail, username, temporaryPassword);
+      await sendPasswordEmail(userEmail, userEmail, temporaryPassword);
       // eslint-disable-next-line no-console
       console.log('[Register] Correo enviado exitosamente a:', userEmail);
     } catch (emailError) {
@@ -1616,7 +1616,7 @@ app.post('/api/auth/2fa/verify', async (req, res) => {
     if (!verifyToken(userSecret.secret, code)) {
       return res.status(401).json({
         success: false,
-        error: 'C�digo inv�lido',
+        error: 'Código inválido',
       });
     }
 
@@ -2055,7 +2055,7 @@ app.post('/api/admin/users/:username/reset-password', requireAdmin, async (req, 
     // Enviar correo si está habilitado
     if (sendEmail && userEmail) {
       try {
-        await sendPasswordEmail(userEmail, username, temporaryPassword);
+        await sendPasswordEmail(userEmail, userEmail, temporaryPassword);
         // eslint-disable-next-line no-console
         console.log('[Admin] Contraseña reseteada y correo enviado a:', userEmail);
       } catch (emailError) {

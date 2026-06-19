@@ -1,16 +1,16 @@
 {
-  "javiermorenavideo": {
-    "username": "javiermorenavideo",
+  "javier.morena": {
+    "username": "javier.morena",
     "password": "Inforges@urovesa2026",
-    "email": "javiermorenavideo@gmail.com",
+    "email": "javier.morena@inforges.es",
     "displayName": "BRAIS CARNOTA MUÑIZ",
-    "dn": "CN=javiermorenavideo,CN=Users,DC=urovesa,DC=com",
+    "dn": "CN=javier.morena,CN=Users,DC=urovesa,DC=com",
     "mustChangePassword": false,
     "failedLoginAttempts": 0,
     "isLocked": false,
     "passwordHistory": [
-      "4786"
+      "2241"
     ],
-    "passwordChangedAt": "2026-06-08T09:21:50.541Z"
+    "passwordChangedAt": "2026-06-10T12:31:48.423Z"
   }
 }

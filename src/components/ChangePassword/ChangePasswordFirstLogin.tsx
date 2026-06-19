@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth, useBlockBrowserBack } from '../../hooks';
+import PasswordInput from '../common/PasswordInput';
 import './ChangePasswordFirstLogin.css';
 
 const schema = z.object({
@@ -89,19 +90,19 @@ const ChangePasswordFirstLogin: React.FC = () => {
 
           <div className="cpfl-group">
             <label className="cpfl-label">Contraseña actual</label>
-            <input className="cpfl-input" type="password" placeholder="••••••••" {...register('oldPassword')} />
+            <PasswordInput inputClassName="cpfl-input" placeholder="••••••••" {...register('oldPassword')} />
             {errors.oldPassword && <p className="cpfl-error">{errors.oldPassword.message}</p>}
           </div>
 
           <div className="cpfl-group">
             <label className="cpfl-label">Nueva contraseña</label>
-            <input className="cpfl-input" type="password" placeholder="••••••••" {...register('newPassword')} />
+            <PasswordInput inputClassName="cpfl-input" placeholder="••••••••" {...register('newPassword')} />
             {errors.newPassword && <p className="cpfl-error">{errors.newPassword.message}</p>}
           </div>
 
           <div className="cpfl-group">
             <label className="cpfl-label">Confirmar nueva contraseña</label>
-            <input className="cpfl-input" type="password" placeholder="••••••••" {...register('confirmNewPassword')} />
+            <PasswordInput inputClassName="cpfl-input" placeholder="••••••••" {...register('confirmNewPassword')} />
             {errors.confirmNewPassword && <p className="cpfl-error">{errors.confirmNewPassword.message}</p>}
           </div>
 

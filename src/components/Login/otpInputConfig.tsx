@@ -23,3 +23,9 @@ export const renderNumericOtpInput = (props: React.InputHTMLAttributes<HTMLInput
 );
 
 export const sanitizeOtpValue = (value: string) => value.replace(/\D/g, '').slice(0, 6);
+
+export const OtpSeparator = () => (
+  <span className="otp-separator" aria-hidden="true">
+    -
+  </span>
+);

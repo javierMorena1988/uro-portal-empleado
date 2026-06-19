@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import OtpInput from 'react-otp-input';
 import { useAuth } from '../../hooks/useAuth';
 import { setup2FA, verify2FA, get2FAStatus } from '../../services/auth';
+import { OtpSeparator } from '../Login/otpInputConfig';
 import './Profile.css';
 
 const Profile: React.FC = () => {
@@ -284,7 +285,7 @@ const Profile: React.FC = () => {
                   <div className="two-factor-setup">
                     <p className="status-description">
                       La autenticación de doble factor añade una capa adicional de seguridad a tu cuenta. 
-                      Se te solicitará un código de 6 dígitos de tu aplicación de autenticación cada vez que inicies sesión.
+                      Se te solicitará un código de 6 dígitos de Microsoft Authenticator cada vez que inicies sesión.
                     </p>
                     
                     {!show2FASetup ? (
@@ -298,7 +299,7 @@ const Profile: React.FC = () => {
                       <div className="two-factor-setup-flow">
                         <div className="setup-step">
                           <h4>Paso 1: Escanea el código QR</h4>
-                          <p>Usa tu aplicación de autenticación (Google Authenticator, Microsoft Authenticator, etc.) para escanear este código:</p>
+                          <p>Usa <strong>Microsoft Authenticator</strong> para escanear este código:</p>
                           
                           {qrCode ? (
                             <div className="qr-code-container">
@@ -311,7 +312,7 @@ const Profile: React.FC = () => {
                           <div className="setup-instructions">
                             <p><strong>Instrucciones:</strong></p>
                             <ol>
-                              <li>Abre Google Authenticator, Microsoft Authenticator o cualquier app compatible en tu móvil</li>
+                              <li>Abre <strong>Microsoft Authenticator</strong> en tu móvil</li>
                               <li>Escanee el código QR que aparece arriba</li>
                               <li>Anota el código de 6 dígitos que aparece en tu app</li>
                               <li>Ingresa el código en el campo de abajo para verificar y habilitar 2FA</li>
@@ -321,14 +322,14 @@ const Profile: React.FC = () => {
                         
                         <div className="setup-step">
                           <h4>Paso 2: Verifica el código</h4>
-                          <p>Ingresa el código de 6 dígitos que aparece en tu aplicación de autenticación:</p>
+                          <p>Ingresa el código de 6 dígitos que aparece en Microsoft Authenticator:</p>
                           
                           <div className="otp-input-container">
                             <OtpInput
                               value={verificationCode}
                               onChange={setVerificationCode}
                               numInputs={6}
-                              renderSeparator={<span>-</span>}
+                              renderSeparator={<OtpSeparator />}
                               renderInput={(props) => <input {...props} />}
                               inputStyle={{
                                 width: "3rem",
